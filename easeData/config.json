@@ -1,0 +1,6 @@
+{
+    "jaqs_user": "18259109001", 
+    "jaqs_token": "eyJhbGciOiJIUzI1NiJ9.eyJjcmVhdGVfdGltZSI6IjE1MjA0ODkyOTM0OTUiLCJpc3MiOiJhdXRoMCIsImlkIjoiMTgyNTkxMDkwMDEifQ.pIfT1qrQ1FsFkcnBaZu0VfXynLGiTfByduaDTtzJ0mM", 
+    "dataPath": "D:\\project\\edData", 
+    "jaqs_address": "tcp://data.quantos.org:8910"
+}
