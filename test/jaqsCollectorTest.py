@@ -181,16 +181,23 @@ class TestJaqsCollector(unittest.TestCase):
         print("sc")
         print(jaqsCollector.getMainContractListByPeriod('sc', start="2018-08-01"))
 
+        print("fu")
+        print(jaqsCollector.getMainContractListByPeriod('fu', start="2018-01-01"))
+
     def testGetMainContractSymbolByDate(self):
         print(jaqsCollector.getMainContractSymbolByDate('rb', '2014-12-29'))
         print(jaqsCollector.getMainContractSymbolByDate('rb', '2017-04-19'))
         print(jaqsCollector.getMainContractSymbolByDate('ru', '2017-04-19'))
         print(jaqsCollector.getMainContractSymbolByDate('ru', '2018-04-20'))
         print(jaqsCollector.getMainContractSymbolByDate('rb', '2018-04-20'))
+        print(jaqsCollector.getMainContractSymbolByDate('ag', '2013-01-04'))
+        print(jaqsCollector.getMainContractSymbolByDate('IH', '2013-10-25'))
 
     def testGetFutureContractLifespan(self):
         print(jaqsCollector.getFutureContractLifespan('rb1801'))
         print(jaqsCollector.getFutureContractLifespan('rb'))
+        print(jaqsCollector.getFutureContractLifespan('ag'))
+        print(jaqsCollector.getFutureContractLifespan('al'))
 
     def testIsCompleteFile(self):
         files = ['ag1812_20180827-210100_to_20180827-211300.csv',

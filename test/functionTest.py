@@ -95,6 +95,11 @@ class TestFunction(unittest.TestCase):
         print('=' * 30)
         printDict(histMain)
 
+        print(histMain['IH'])
+        print(histMain['fb'])
+
+
+
 
 if __name__ == '__main__':
     unittest.main()

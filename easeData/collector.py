@@ -240,10 +240,25 @@ class JaqsDataCollector(DataCollector):
         """
         Get the life span of a future contract.
         ----------------------------------------------------------------------------------------------------------------
-        :param symbol: string. contract symbol. eg. 'rb1801'
+        :param symbol: string. contract symbol or underlying symbol. eg. 'rb1801' or 'rb'
         :return:
         tuple(string, string). The listing date and de-listing date. format: %Y%m%d
         """
+        # If symbol is underlying symbol.
+        map_ = self.getFutureHistoryMainContractMap()
+        if symbol in map_:
+            mainContracts = map_.get(symbol)
+            begin = mainContracts[0][1]
+            end = mainContracts[-1][2] if mainContracts[-1][2] != '' else dateToStr(datetime.today())
+            jaqsStart = datetime(2012, 1, 1)
+            if strToDate(end) <= jaqsStart:
+                self.logger.info("Result of lifespan is None.")
+                return None
+            else:
+                begin = begin if strToDate(begin) > jaqsStart else dateToStr(jaqsStart)
+                return rmDateDash(begin).encode(), rmDateDash(end)  # uniform return format.
+
+        # If symbol is trade-able contract symbol.
         df = self.getBasicData(self.INST_TYPE_FUTURE)
         queryRes = df.loc[df.symbol == self.addFutureExchangeToSymbol(symbol)]
         if queryRes.empty:
@@ -269,8 +284,8 @@ class JaqsDataCollector(DataCollector):
         else:
             allEndDt = datetime.today()
 
-        start = allBeginDt if start is None else strToDate(start)
-        end = allEndDt if end is None else strToDate(end)
+        start = allBeginDt if start is None else strToDate(self.getNextTradeDay(start))
+        end = allEndDt if end is None else strToDate(self.getPreTradeDay(end))
 
         # If selective window and duration of main contracts list is only touch or non-intersect.
         if start == allEndDt:
@@ -543,17 +558,20 @@ class JaqsDataCollector(DataCollector):
                 else:
                     existedDay.append(endDate)
 
-        # Set initial download mission by trading day list.
+        # Set initial download mission by trading day list.s
         if start is None or end is None:
             # Check symbol is continuous main or invalid.
             lifespan = self.getFutureContractLifespan(symbol)
             if lifespan is None:
-                if symbol in self.getFutureExchangeMap().keys():
-                    start = '2012-01-01'
-                    end = dateToStr(datetime.today())
-                else:
-                    self.logger.error("Invalid symbol: {}".format(symbol))
-                    return
+                self.logger.error("Invalid symbol: {}".format(symbol))
+                return
+                # if symbol in self.getFutureExchangeMap().keys():
+                #     # 有的合约开始日期远远大于2012年，这里如果设为2012年，就会浪费很多时间去试错。需要更改。
+                #     start = '2012-01-01'
+                #     end = dateToStr(datetime.today())
+                # else:
+                #     self.logger.error("Invalid symbol: {}".format(symbol))
+                #     return
             # Valid and trade-able symbol
             else:
                 if start is None:
@@ -584,6 +602,9 @@ class JaqsDataCollector(DataCollector):
                 # For maybe missing data within continuous main contract. So try to fix with main contract.
                 if symbol in self.getFutureExchangeMap().keys():
                     replaceSymbol = self.getMainContractSymbolByDate(symbol, trade_date)
+                    if replaceSymbol is None:
+                        self.logger.info("Get Alternative data failed.")
+                        continue
                     self.logger.info("Trying to get from {}".format(replaceSymbol))
                     result = self.queryBar(replaceSymbol, trade_date=int(trade_date), **kwargs)
                     if result is not None:
@@ -634,11 +655,30 @@ class JaqsDataCollector(DataCollector):
         :param kwargs:
         :return:
         """
+        if skipSymbol is None:
+            skipSymbol = []
         symbols = self.getFutureExchangeMap().keys()
         for symbol in symbols:
             print(symbol)
             if symbol in self.getFutureCurrentMainContract().keys() and symbol not in skipSymbol:
                 self.downloadMainContractBar(symbol, start, end, **kwargs)
+
+    def downloadAllContinuousMainContract(self, start=None, end=None, skipSymbol=None, **kwargs):
+        """
+        Download all continuous main contract.
+        ----------------------------------------------------------------------------------------------------------------
+        :param start: start date. format: '%Y-%m-%d' or '%Y%m%d'.
+        :param end: end date
+        :param skipSymbol: iterable container<string> . list or tuple.
+        :param kwargs:
+        :return:
+        """
+        if skipSymbol is None:
+            skipSymbol = []
+        symbols = self.getFutureExchangeMap().keys()
+        for symbol in symbols:
+            if symbol in self.getFutureCurrentMainContract().keys() and symbol not in skipSymbol:
+                self.downloadBarByContract(symbol, start, end, **kwargs)
 
     def downloadCurrentMainContractBar(self, start=None, skipSymbol=None, refresh=False):
         """

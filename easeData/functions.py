@@ -276,24 +276,6 @@ def getMainContract(fileName):
 
             result = getPeriod(colIterator)
             mainContractMap[colName] = result
-
-            # # Now colData is a list of tuple. tuple(0) is begin date，tuple(1) is the symbol.
-            # # eg.[('2018-01-03', 'rb1801'), ('2018-04-05', 'rb1805'), ...]
-            # # list needs to be added the end date to get format like this:[(symbol, begin, end), ...]
-            # result = []
-            # for index in range(0, len(colData)):
-            #     beginDate, symbol = colData[index]
-            #     if colName.islower():
-            #         symbol = symbol.lower()
-            #     try:
-            #         endDate = colData[index + 1][0]
-            #         endDate = strToDate(endDate)
-            #         endDate = endDate - timedelta(days=1)
-            #         endDate = dateToStr(endDate)
-            #     except IndexError:
-            #         endDate = ''
-            #     result.append((symbol, beginDate, endDate))
-
     return mainContractMap
 
 

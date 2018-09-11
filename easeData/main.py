@@ -35,7 +35,8 @@ def main():
     dbAdaptor = getDbAdaptor(logger, dp)
     collector = getCollector(logger, dp, dbAdaptor)
 
-    collector.downloadAllMainContractBar(start='2018-08-01', skipSymbol=['T', 'TC', 'TS', 'sc'])
+    collector.downloadAllMainContractBar(start='2018-01-01', skipSymbol=['T', 'TF', 'TS', 'sc'])
+    collector.downloadAllContinuousMainContract(skipSymbol=['T', 'TS', 'TF', 'sc', 'IH', 'IF', 'IC'])
 
 
 if __name__ == '__main__':
