@@ -41,11 +41,11 @@ class TestVnpyAdaptor(unittest.TestCase):
         print(vnpyAdaptor.db.collection_names())
 
     def testGetExistedDay(self):
-        days = vnpyAdaptor.getDbExistedDataDay('rb1810')
+        days = vnpyAdaptor.getDbExistedDataDay('rb')
         print(days)
 
     def testGenFilePath(self):
-        path = os.path.join(vnpyAdaptor.dataPath, DIR_JAQS_PRICE_DATA, FUTURE, 'rb', 'rb1810')
+        path = os.path.join(vnpyAdaptor.dataPath, DIR_JAQS_PRICE_DATA, FUTURE, 'rb', 'rb')
         genFiles = vnpyAdaptor.genFilePaths(path)
         while True:
             try:
@@ -53,6 +53,15 @@ class TestVnpyAdaptor(unittest.TestCase):
             except StopIteration:
                 print('Over.')
                 break
+
+    def testGenFilePath2(self):
+        path = os.path.join(vnpyAdaptor.dataPath, DIR_JAQS_PRICE_DATA, FUTURE, 'rb', 'rb')
+        vnpyAdaptor.genFilePaths(path)
+
+    def testGetSymbolPath(self):
+        print(vnpyAdaptor.getContractPath('rb'))
+        print(vnpyAdaptor.getContractPath('rb1901'))
+
 
 
 if __name__ == '__main__':

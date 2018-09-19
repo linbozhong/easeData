@@ -1,5 +1,6 @@
 # coding:utf-8
 
+import os
 import logging
 from functions import (initDataDirectory, )
 from dbConnector import MongoDbConnector, VnpyAdaptor
@@ -35,8 +36,12 @@ def main():
     dbAdaptor = getDbAdaptor(logger, dp)
     collector = getCollector(logger, dp, dbAdaptor)
 
-    collector.downloadAllMainContractBar(start='2018-01-01', skipSymbol=['T', 'TF', 'TS', 'sc'])
-    collector.downloadAllContinuousMainContract(skipSymbol=['T', 'TS', 'TF', 'sc', 'IH', 'IF', 'IC'])
+    # collector.downloadBarByContract(symbol='rb')
+    # collector.downloadAllMainContractBar(start='2018-01-01', skipSymbol=['T', 'TF', 'TS', 'sc'])
+    # collector.downloadAllContinuousMainContract(skipSymbol=['T', 'TS', 'TF', 'sc', 'IH', 'IF', 'IC'])
+
+    filePath = dbAdaptor.getContractPath('rb')
+    dbAdaptor.filesToDb(path=filePath)
 
 
 if __name__ == '__main__':

@@ -6,7 +6,7 @@ import pymongo
 import time
 from datetime import datetime
 from const import *
-from functions import (initDataDirectory, parseFilename)
+from functions import (initDataDirectory, parseFilename, getUnderlyingSymbol)
 
 
 class DataBaseConnector(object):
@@ -119,11 +119,8 @@ class VnpyAdaptor(object):
             self.setDb()
         collection = self.db[colName]
         cursor = collection.find(projection={'date': True, '_id': False})
-        existedDay = []
-        for doc in cursor:
-            if doc['date'] not in existedDay:
-                existedDay.append(doc['date'])
-        return existedDay
+        dateList = [doc['date'] for doc in cursor]
+        return set(dateList)
 
     def convertBar(self, sourceBar):
         """
@@ -134,7 +131,7 @@ class VnpyAdaptor(object):
         """
         sameKey = ['open', 'high', 'low', 'close', 'volume']
         newDict = {key: float(value) for key, value in sourceBar.items() if key in sameKey}
-        newDict['openInterest'] = float(sourceBar['oi'])
+        newDict['openInterest'] = float(sourceBar['oi']) if sourceBar['oi'] != '' else 0.0
         newDict['symbol'] = sourceBar['code']
         newDict['vtSymbol'] = sourceBar['code']
         dtTuple = self.parseDatetime(sourceBar['date'], sourceBar['time'])
@@ -178,6 +175,7 @@ class VnpyAdaptor(object):
                     if skipDbExisted:
                         symbol, _sd, _st, endDate, _et = parseFilename(filename)
                         if existedDayMap.get(symbol) is None:
+                            self.logger.info("{}:Getting existed day from database. Please wait...".format(symbol))
                             existedDayMap[symbol] = self.getDbExistedDataDay(symbol)
                         if endDate in existedDayMap[symbol]:
                             self.logger.info('{} is existed in db.'.format(endDate))
@@ -224,7 +222,17 @@ class VnpyAdaptor(object):
         flt = {'datetime': document['datetime']}
         self.lastCollection.replace_one(flt, document, upsert=True)
 
-    def allFutureFilesToDb(self, path=None, skipDbExisted=True):
+    def getContractPath(self, symbol):
+        """
+        Get csv file path of price data.
+        ----------------------------------------------------------------------------------------------------------------
+        :param symbol: string. e.g. 'rb1901' or 'rb'
+        :return: string. path.
+        """
+        underlying = getUnderlyingSymbol(symbol)
+        return os.path.join(self.dataPath, DIR_JAQS_PRICE_DATA, FUTURE, underlying, symbol)
+
+    def filesToDb(self, path=None, skipDbExisted=True):
         """
         Read all price data and save all bars to db.
         ----------------------------------------------------------------------------------------------------------------
@@ -240,3 +248,29 @@ class VnpyAdaptor(object):
             dbBar = self.convertBar(bar)
             self.saveBarToDb(dbBar)
         self.logger.info('Mission is over. time consumption is {}'.format(time.time() - start))
+
+# class DataValidator(object):
+#     beginTime = (90100, 210100)
+#
+#     def __init__(self):
+#         self.symbolList = []
+#
+#     @staticmethod
+#     def minuteAddOne(time):
+#         timeStr = '{:0>6d}'.format(time)
+#         hour, minute, second = timeStr[0:2], timeStr[2:4], timeStr[4:6]
+#         newMinute = int(minute) + 1
+#         newHour = int(hour)
+#         if newMinute > 59:
+#             newMinute = 0
+#             newHour = int(hour) + 1
+#             if newHour > 23:
+#                 newHour = 0
+#         return '{:0>2d}{:0>2d}{}'.format(newHour, newMinute, second)
+#
+#     def addSymbol(self, symbol):
+#         self.symbolList.append(symbol)
+#
+#     def verifyFull(self, symbol):
+#         pass
+#
