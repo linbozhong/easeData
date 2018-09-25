@@ -9,6 +9,7 @@ DIR_DATA_ROOT = 'edData'
 DIR_LOG = 'log'
 DIR_JAQS_BASIC_DATA = 'jaqsBasicData'
 DIR_JAQS_PRICE_DATA = 'jaqsPriceData'
+DIR_RQ_PRICE_DATA = 'rqPriceData'
 
 
 # File name of setting file

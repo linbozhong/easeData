@@ -186,6 +186,7 @@ class TestJaqsCollector(unittest.TestCase):
 
     def testGetMainContractSymbolByDate(self):
         print(jaqsCollector.getMainContractSymbolByDate('rb', '2014-12-29'))
+        print(jaqsCollector.getMainContractSymbolByDate('rb', '2013-04-09'))
         print(jaqsCollector.getMainContractSymbolByDate('rb', '2017-04-19'))
         print(jaqsCollector.getMainContractSymbolByDate('ru', '2017-04-19'))
         print(jaqsCollector.getMainContractSymbolByDate('ru', '2018-04-20'))
@@ -214,15 +215,16 @@ class TestJaqsCollector(unittest.TestCase):
         jaqsCollector.queryBar('rb1810', trade_date='2018-07-04')
         jaqsCollector.queryBar('rb1901')
         jaqsCollector.queryBar('rb', trade_date='2017-04-19')
+        print(jaqsCollector.queryBar('rb', trade_date='2013-04-09'))
 
     def testDownloadBarByContract(self):
         # jaqsCollector.downloadBarByContract('rb1810', '2018-07-01', '2018-07-15')
         # jaqsCollector.downloadBarByContract('rb1901', '2018-07-01', saveToDb=True)
-        jaqsCollector.downloadBarByContract('rb1901', '2018-07-01')
-        jaqsCollector.downloadBarByContract('rb1901', '2018-07-01')
+        # jaqsCollector.downloadBarByContract('rb1901', '2018-07-01')
+        # jaqsCollector.downloadBarByContract('rb1901', '2018-07-01')
+        jaqsCollector.downloadBarByContract('rb1310')
         # jaqsCollector.downloadBarByContract('rb1810', '2018-07-01', '2018-07-15', refresh=True)
         # jaqsCollector.downloadBarByContract('rb', '2018-01-01', '2018-07-15')
-        # jaqsCollector.downloadBarByContract('rb')
         # jaqsCollector.downloadBarByContract('ru')
         # jaqsCollector.downloadBarByContract('cu')
         # jaqsCollector.downloadBarByContract('rb1710', start='2017-04-19', end='2017-04-20')
