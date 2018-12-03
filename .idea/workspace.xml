@@ -3,10 +3,19 @@
   <component name="ChangeListManager">
     <list default="true" id="ffaee0d1-f720-4db3-a12e-7f8d46587b93" name="Default" comment="">
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/easeData/collector.py" afterPath="$PROJECT_DIR$/easeData/collector.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/easeData/config.json" afterPath="$PROJECT_DIR$/easeData/config.json" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/easeData/const.py" afterPath="$PROJECT_DIR$/easeData/const.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/easeData/dbConnector.py" afterPath="$PROJECT_DIR$/easeData/dbConnector.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/test/jaqsCollectorTest.py" afterPath="$PROJECT_DIR$/test/jaqsCollectorTest.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/easeData/functions.py" afterPath="$PROJECT_DIR$/easeData/functions.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/easeData/log.py" afterPath="$PROJECT_DIR$/easeData/log.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/easeData/main.py" afterPath="$PROJECT_DIR$/easeData/main.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/easeData/rqData.py" afterPath="$PROJECT_DIR$/easeData/rqData.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/externalData/rqData/current_main_contract.json" afterPath="$PROJECT_DIR$/externalData/rqData/current_main_contract.json" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/externalData/rqData/main_contract_history.csv" afterPath="$PROJECT_DIR$/externalData/rqData/main_contract_history.csv" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/test/functionTest.py" afterPath="$PROJECT_DIR$/test/functionTest.py" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/test/vnpyAdaptorTest.py" afterPath="$PROJECT_DIR$/test/vnpyAdaptorTest.py" />
+      <change type="MOVED" beforePath="$PROJECT_DIR$/easeData/dbConnector.py" afterPath="$PROJECT_DIR$/easeData/database.py" />
+      <change type="MOVED" beforePath="$PROJECT_DIR$/test/jaqsCollectorTest.py" afterPath="$PROJECT_DIR$/test/collectorTest.py" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -20,56 +29,46 @@
       <file leaf-file-name="collector.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/easeData/collector.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="1048">
-              <caret line="284" column="39" lean-forward="false" selection-start-line="284" selection-start-column="39" selection-end-line="284" selection-end-column="39" />
-              <folding>
-                <element signature="e#16#35#0" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="dbConnector.py" pinned="false" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/easeData/dbConnector.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="145">
-              <caret line="74" column="26" lean-forward="true" selection-start-line="74" selection-start-column="26" selection-end-line="74" selection-end-column="26" />
-              <folding>
-                <element signature="e#16#26#0" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="functionTest.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/test/functionTest.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="544">
-              <caret line="87" column="11" lean-forward="false" selection-start-line="87" selection-start-column="11" selection-end-line="87" selection-end-column="11" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="main.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/easeData/main.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="609">
-              <caret line="34" column="29" lean-forward="false" selection-start-line="34" selection-start-column="29" selection-end-line="34" selection-end-column="29" />
+            <state relative-caret-position="2776">
+              <caret line="642" column="35" lean-forward="false" selection-start-line="642" selection-start-column="35" selection-end-line="642" selection-end-column="35" />
               <folding>
                 <element signature="e#16#25#0" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="vnpyAdaptorTest.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/test/vnpyAdaptorTest.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="2016">
-              <caret line="126" column="0" lean-forward="true" selection-start-line="126" selection-start-column="0" selection-end-line="126" selection-end-column="0" />
-              <folding>
-                <element signature="e#16#30#0" expanded="true" />
+                <element signature="e#1094#12739#0" expanded="false" />
+                <element signature="e#13355#16226#0" expanded="false" />
+                <element signature="e#19021#19882#0" expanded="false" />
+                <element signature="e#19956#20429#0" expanded="false" />
+                <element signature="e#20553#21462#0" expanded="false" />
+                <element signature="e#21533#21926#0" expanded="false" />
+                <element signature="e#21995#22384#0" expanded="false" />
+                <element signature="e#22489#23178#0" expanded="false" />
+                <element signature="e#23242#23702#0" expanded="false" />
+                <element signature="e#23775#24836#0" expanded="false" />
+                <element signature="e#25563#26169#0" expanded="false" />
+                <element signature="e#26227#26710#0" expanded="false" />
+                <element signature="e#26764#27275#0" expanded="false" />
+                <element signature="e#27333#27821#0" expanded="false" />
+                <element signature="e#27905#28617#0" expanded="false" />
+                <element signature="e#28663#29168#0" expanded="false" />
+                <element signature="e#29227#29903#0" expanded="false" />
+                <element signature="e#29943#30397#0" expanded="false" />
+                <element signature="e#30447#30741#0" expanded="false" />
+                <element signature="e#30798#31316#0" expanded="false" />
+                <element signature="e#31375#32662#0" expanded="false" />
+                <element signature="e#32755#34838#0" expanded="false" />
+                <element signature="e#34915#35741#0" expanded="false" />
+                <element signature="e#35791#36651#0" expanded="false" />
+                <element signature="e#36723#38546#0" expanded="false" />
+                <element signature="e#38596#39451#0" expanded="false" />
+                <element signature="e#39488#40140#0" expanded="false" />
+                <element signature="e#40201#40927#0" expanded="false" />
+                <element signature="e#40983#41662#0" expanded="false" />
+                <element signature="e#41717#42382#0" expanded="false" />
+                <element signature="e#42545#46361#0" expanded="false" />
+                <element signature="e#48156#48889#0" expanded="false" />
+                <element signature="e#48967#49711#0" expanded="false" />
+                <element signature="e#50663#51145#0" expanded="false" />
+                <element signature="e#51195#51634#0" expanded="false" />
+                <element signature="e#51679#52321#0" expanded="false" />
               </folding>
             </state>
           </provider>
@@ -78,21 +77,9 @@
       <file leaf-file-name="const.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/easeData/const.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="231">
-              <caret line="11" column="33" lean-forward="true" selection-start-line="11" selection-start-column="33" selection-end-line="11" selection-end-column="33" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name="log.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/easeData/log.py">
-          <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="378">
-              <caret line="22" column="30" lean-forward="false" selection-start-line="22" selection-start-column="30" selection-end-line="22" selection-end-column="30" />
-              <folding>
-                <element signature="e#16#25#0" expanded="true" />
-              </folding>
+              <caret line="57" column="29" lean-forward="false" selection-start-line="57" selection-start-column="29" selection-end-line="57" selection-end-column="57" />
+              <folding />
             </state>
           </provider>
         </entry>
@@ -100,10 +87,90 @@
       <file leaf-file-name="functions.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/easeData/functions.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="5754">
-              <caret line="281" column="37" lean-forward="false" selection-start-line="281" selection-start-column="37" selection-end-line="281" selection-end-column="37" />
+            <state relative-caret-position="969">
+              <caret line="115" column="7" lean-forward="false" selection-start-line="115" selection-start-column="7" selection-end-line="115" selection-end-column="7" />
               <folding>
                 <element signature="e#16#25#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="base.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/easeData/base.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="1050">
+              <caret line="50" column="0" lean-forward="true" selection-start-line="50" selection-start-column="0" selection-end-line="50" selection-end-column="0" />
+              <folding>
+                <element signature="e#15#24#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="baseTest.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/test/baseTest.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="570">
+              <caret line="58" column="32" lean-forward="true" selection-start-line="58" selection-start-column="32" selection-end-line="58" selection-end-column="32" />
+              <folding>
+                <element signature="e#16#25#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="database.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/easeData/database.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="273">
+              <caret line="13" column="42" lean-forward="true" selection-start-line="13" selection-start-column="42" selection-end-line="13" selection-end-column="42" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="analyze.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/easeData/analyze.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="567">
+              <caret line="32" column="48" lean-forward="false" selection-start-line="32" selection-start-column="48" selection-end-line="32" selection-end-column="48" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="config.json" pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/easeData/config.json">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="147">
+              <caret line="7" column="1" lean-forward="true" selection-start-line="7" selection-start-column="1" selection-end-line="7" selection-end-column="1" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="collectorTest.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/test/collectorTest.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="131">
+              <caret line="118" column="0" lean-forward="true" selection-start-line="118" selection-start-column="0" selection-end-line="118" selection-end-column="0" />
+              <folding>
+                <element signature="e#16#25#0" expanded="true" />
+                <element signature="e#594#3521#0" expanded="false" />
+                <element signature="e#3574#3969#0" expanded="false" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="vnpyAdaptorTest.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/test/vnpyAdaptorTest.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="1347">
+              <caret line="76" column="54" lean-forward="true" selection-start-line="76" selection-start-column="54" selection-end-line="76" selection-end-column="54" />
+              <folding>
+                <element signature="e#16#31#0" expanded="true" />
               </folding>
             </state>
           </provider>
@@ -120,36 +187,48 @@
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>seq</find>
-      <find>symbolMap</find>
-      <find>makeBasicDataFilename</find>
-      <find>makeFilename</find>
-      <find>getCurrentMainContract</find>
-      <find>get_latset_main_contract</find>
-      <find>loadBasicData</find>
-      <find>getBasicDataFilename</find>
+      <find>FILE_IS</find>
+      <find>adaptor</find>
+      <find>dataDirName</find>
+      <find>getBarPath</find>
+      <find>_isConnected</find>
+      <find>self.name</find>
+      <find>converters</find>
+      <find>getUnderlyingSymbol</find>
+      <find>parseFilename</find>
+      <find>getMonthBusinessDay</find>
+      <find>printDict</find>
+      <find>fn</find>
+      <find>getParentDir</find>
+      <find>jqdataCollector</find>
+      <find>csvLoader</find>
+      <find>setDbCollection</find>
+      <find>convert</find>
+      <find>api</find>
+      <find>self.api</find>
+      <find>unpopularFuture</find>
+      <find>mkPriceDataFileDir</find>
+      <find>self.logger</find>
+      <find>getDbAdaptor</find>
       <find>getBasicDataFilePath</find>
-      <find>getFutureExchangeMap</find>
-      <find>downloadMainContractBar</find>
-      <find>getTradingDay</find>
-      <find>futureCurrentMainContract</find>
-      <find>futureHistoryMainContractMap</find>
-      <find>fn.getcurre</find>
-      <find>saveBarToDb</find>
-      <find>WT</find>
-      <find>getMainContract</find>
-      <find>zn</find>
-      <find>ap</find>
-      <find>isczc</find>
-      <find>getmain</find>
-      <find>strtodate</find>
-      <find>getFutureContractLifespan</find>
-      <find>getFutureHistoryMainContractMap</find>
-      <find>20180917</find>
+      <find>jaqsCollector</find>
+      <find>getBasicDataPath</find>
+      <find>GetBar</find>
+      <find>needFull</find>
+      <find>GetDaily</find>
+      <find>lastTradeDate</find>
     </findStrings>
     <replaceStrings>
       <replace>colData</replace>
+      <replace>dv</replace>
+      <replace>self.obj.activeConverter</replace>
+      <replace>getBar</replace>
+      <replace>self.obj</replace>
+      <replace>getDaily</replace>
     </replaceStrings>
+    <dirStrings>
+      <dir>D:\project\easeData</dir>
+    </dirStrings>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -161,19 +240,25 @@
         <option value="$PROJECT_DIR$/easeData/b.py" />
         <option value="$PROJECT_DIR$/easeData/operator.py" />
         <option value="$PROJECT_DIR$/easeData/__init__.py" />
-        <option value="$PROJECT_DIR$/easeData/rqData.py" />
-        <option value="$PROJECT_DIR$/test/collectorTest.py" />
         <option value="$PROJECT_DIR$/easeData/jaqs_config.json" />
-        <option value="$PROJECT_DIR$/easeData/config.json" />
+        <option value="$PROJECT_DIR$/easeData/main.py" />
+        <option value="$PROJECT_DIR$/easeData/rqData.py" />
+        <option value="$PROJECT_DIR$/easeData/analyze.py" />
+        <option value="$PROJECT_DIR$/test/jaqsCollectorTest.py" />
+        <option value="$PROJECT_DIR$/easeData/null.py" />
+        <option value="$PROJECT_DIR$/easeData/dbConnector.py" />
         <option value="$PROJECT_DIR$/easeData/log.py" />
         <option value="$PROJECT_DIR$/easeData/functions.py" />
         <option value="$PROJECT_DIR$/test/functionTest.py" />
-        <option value="$PROJECT_DIR$/easeData/collector.py" />
-        <option value="$PROJECT_DIR$/easeData/main.py" />
-        <option value="$PROJECT_DIR$/test/jaqsCollectorTest.py" />
         <option value="$PROJECT_DIR$/easeData/const.py" />
+        <option value="$PROJECT_DIR$/easeData/text.py" />
+        <option value="$PROJECT_DIR$/test/collectorTest.py" />
+        <option value="$PROJECT_DIR$/easeData/collector.py" />
         <option value="$PROJECT_DIR$/test/vnpyAdaptorTest.py" />
-        <option value="$PROJECT_DIR$/easeData/dbConnector.py" />
+        <option value="$PROJECT_DIR$/easeData/base.py" />
+        <option value="$PROJECT_DIR$/test/baseTest.py" />
+        <option value="$PROJECT_DIR$/easeData/database.py" />
+        <option value="$PROJECT_DIR$/easeData/config.json" />
       </list>
     </option>
   </component>
@@ -218,7 +303,6 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
-      <pane id="Scope" />
       <pane id="ProjectPane">
         <subPane>
           <expand>
@@ -229,19 +313,30 @@
             <path>
               <item name="easeData" type="b2602c69:ProjectViewProjectNode" />
               <item name="easeData" type="462c0819:PsiDirectoryNode" />
+              <item name="easeData" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="easeData" type="b2602c69:ProjectViewProjectNode" />
+              <item name="easeData" type="462c0819:PsiDirectoryNode" />
               <item name="externalData" type="462c0819:PsiDirectoryNode" />
             </path>
             <path>
               <item name="easeData" type="b2602c69:ProjectViewProjectNode" />
               <item name="easeData" type="462c0819:PsiDirectoryNode" />
               <item name="externalData" type="462c0819:PsiDirectoryNode" />
-              <item name="rqData" type="462c0819:PsiDirectoryNode" />
+              <item name="RQData" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="easeData" type="b2602c69:ProjectViewProjectNode" />
+              <item name="easeData" type="462c0819:PsiDirectoryNode" />
+              <item name="test" type="462c0819:PsiDirectoryNode" />
             </path>
           </expand>
           <select />
         </subPane>
       </pane>
       <pane id="Scratches" />
+      <pane id="Scope" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -276,8 +371,8 @@
       </list>
     </option>
   </component>
-  <component name="RunManager" selected="Python tests.Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testVnpyAdaptorFilesToDb">
-    <configuration name="Nosetests for jaqsCollectorTest.TestJaqsCollector.testQueryBar" type="tests" factoryName="Nosetests" nameIsGenerated="true">
+  <component name="RunManager" selected="Python tests.Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testRqDataFilesToDb">
+    <configuration name="Nosetests for baseTest.TestDataVendor.testParseFilename" type="tests" factoryName="Nosetests" temporary="true" nameIsGenerated="true">
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs />
@@ -289,10 +384,10 @@
       <module name="easeData" />
       <option name="_new_regexPattern" value="&quot;&quot;" />
       <option name="_new_additionalArguments" value="&quot;&quot;" />
-      <option name="_new_target" value="&quot;jaqsCollectorTest.TestJaqsCollector.testQueryBar&quot;" />
+      <option name="_new_target" value="&quot;baseTest.TestDataVendor.testParseFilename&quot;" />
       <option name="_new_targetType" value="&quot;PYTHON&quot;" />
     </configuration>
-    <configuration name="Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testAdaptorSetDb" type="tests" factoryName="Nosetests" temporary="true" nameIsGenerated="true">
+    <configuration name="Nosetests for test.collectorTest.TestJaqsCollector.testQueryBar" type="tests" factoryName="Nosetests" nameIsGenerated="true">
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs />
@@ -304,10 +399,10 @@
       <module name="easeData" />
       <option name="_new_regexPattern" value="&quot;&quot;" />
       <option name="_new_additionalArguments" value="&quot;&quot;" />
-      <option name="_new_target" value="&quot;vnpyAdaptorTest.TestVnpyAdaptor.testAdaptorSetDb&quot;" />
+      <option name="_new_target" value="&quot;test.collectorTest.TestJaqsCollector.testQueryBar&quot;" />
       <option name="_new_targetType" value="&quot;PYTHON&quot;" />
     </configuration>
-    <configuration name="Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testConverterGetFiles" type="tests" factoryName="Nosetests" temporary="true" nameIsGenerated="true">
+    <configuration name="Nosetests for vnpyAdaptorTest.TestCSVFilesLoader.testGetFilePaths" type="tests" factoryName="Nosetests" nameIsGenerated="true">
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs />
@@ -319,10 +414,10 @@
       <module name="easeData" />
       <option name="_new_regexPattern" value="&quot;&quot;" />
       <option name="_new_additionalArguments" value="&quot;&quot;" />
-      <option name="_new_target" value="&quot;vnpyAdaptorTest.TestVnpyAdaptor.testConverterGetFiles&quot;" />
+      <option name="_new_target" value="&quot;vnpyAdaptorTest.TestCSVFilesLoader.testGetFilePaths&quot;" />
       <option name="_new_targetType" value="&quot;PYTHON&quot;" />
     </configuration>
-    <configuration name="Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testJaqsConverterGetData" type="tests" factoryName="Nosetests" temporary="true" nameIsGenerated="true">
+    <configuration name="Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testJaqsDataIsFileExisted" type="tests" factoryName="Nosetests" temporary="true" nameIsGenerated="true">
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs />
@@ -334,10 +429,10 @@
       <module name="easeData" />
       <option name="_new_regexPattern" value="&quot;&quot;" />
       <option name="_new_additionalArguments" value="&quot;&quot;" />
-      <option name="_new_target" value="&quot;vnpyAdaptorTest.TestVnpyAdaptor.testJaqsConverterGetData&quot;" />
+      <option name="_new_target" value="&quot;vnpyAdaptorTest.TestVnpyAdaptor.testJaqsDataIsFileExisted&quot;" />
       <option name="_new_targetType" value="&quot;PYTHON&quot;" />
     </configuration>
-    <configuration name="Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testJaqsConverterGetFiles" type="tests" factoryName="Nosetests" temporary="true" nameIsGenerated="true">
+    <configuration name="Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testJaqsFilesToDb" type="tests" factoryName="Nosetests" temporary="true" nameIsGenerated="true">
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs />
@@ -349,10 +444,10 @@
       <module name="easeData" />
       <option name="_new_regexPattern" value="&quot;&quot;" />
       <option name="_new_additionalArguments" value="&quot;&quot;" />
-      <option name="_new_target" value="&quot;vnpyAdaptorTest.TestVnpyAdaptor.testJaqsConverterGetFiles&quot;" />
+      <option name="_new_target" value="&quot;vnpyAdaptorTest.TestVnpyAdaptor.testJaqsFilesToDb&quot;" />
       <option name="_new_targetType" value="&quot;PYTHON&quot;" />
     </configuration>
-    <configuration name="Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testVnpyAdaptorFilesToDb" type="tests" factoryName="Nosetests" temporary="true" nameIsGenerated="true">
+    <configuration name="Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testRqDataFilesToDb" type="tests" factoryName="Nosetests" temporary="true" nameIsGenerated="true">
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs />
@@ -364,24 +459,42 @@
       <module name="easeData" />
       <option name="_new_regexPattern" value="&quot;&quot;" />
       <option name="_new_additionalArguments" value="&quot;&quot;" />
-      <option name="_new_target" value="&quot;vnpyAdaptorTest.TestVnpyAdaptor.testVnpyAdaptorFilesToDb&quot;" />
+      <option name="_new_target" value="&quot;vnpyAdaptorTest.TestVnpyAdaptor.testRqDataFilesToDb&quot;" />
       <option name="_new_targetType" value="&quot;PYTHON&quot;" />
     </configuration>
-    <list size="6">
-      <item index="0" class="java.lang.String" itemvalue="Python tests.Nosetests for jaqsCollectorTest.TestJaqsCollector.testQueryBar" />
-      <item index="1" class="java.lang.String" itemvalue="Python tests.Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testAdaptorSetDb" />
-      <item index="2" class="java.lang.String" itemvalue="Python tests.Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testConverterGetFiles" />
-      <item index="3" class="java.lang.String" itemvalue="Python tests.Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testJaqsConverterGetFiles" />
-      <item index="4" class="java.lang.String" itemvalue="Python tests.Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testJaqsConverterGetData" />
-      <item index="5" class="java.lang.String" itemvalue="Python tests.Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testVnpyAdaptorFilesToDb" />
+    <configuration name="database" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/easeData" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <module name="easeData" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/easeData/database.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+    </configuration>
+    <list size="7">
+      <item index="0" class="java.lang.String" itemvalue="Python tests.Nosetests for vnpyAdaptorTest.TestCSVFilesLoader.testGetFilePaths" />
+      <item index="1" class="java.lang.String" itemvalue="Python tests.Nosetests for test.collectorTest.TestJaqsCollector.testQueryBar" />
+      <item index="2" class="java.lang.String" itemvalue="Python tests.Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testJaqsDataIsFileExisted" />
+      <item index="3" class="java.lang.String" itemvalue="Python.database" />
+      <item index="4" class="java.lang.String" itemvalue="Python tests.Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testJaqsFilesToDb" />
+      <item index="5" class="java.lang.String" itemvalue="Python tests.Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testRqDataFilesToDb" />
+      <item index="6" class="java.lang.String" itemvalue="Python tests.Nosetests for baseTest.TestDataVendor.testParseFilename" />
     </list>
     <recent_temporary>
       <list size="5">
-        <item index="0" class="java.lang.String" itemvalue="Python tests.Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testVnpyAdaptorFilesToDb" />
-        <item index="1" class="java.lang.String" itemvalue="Python tests.Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testJaqsConverterGetData" />
-        <item index="2" class="java.lang.String" itemvalue="Python tests.Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testJaqsConverterGetFiles" />
-        <item index="3" class="java.lang.String" itemvalue="Python tests.Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testConverterGetFiles" />
-        <item index="4" class="java.lang.String" itemvalue="Python tests.Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testAdaptorSetDb" />
+        <item index="0" class="java.lang.String" itemvalue="Python tests.Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testRqDataFilesToDb" />
+        <item index="1" class="java.lang.String" itemvalue="Python tests.Nosetests for baseTest.TestDataVendor.testParseFilename" />
+        <item index="2" class="java.lang.String" itemvalue="Python tests.Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testJaqsFilesToDb" />
+        <item index="3" class="java.lang.String" itemvalue="Python tests.Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testJaqsDataIsFileExisted" />
+        <item index="4" class="java.lang.String" itemvalue="Python.database" />
       </list>
     </recent_temporary>
   </component>
@@ -402,58 +515,58 @@
     <servers />
   </component>
   <component name="TestHistory">
-    <history-entry file="Nosetests_for_vnpyAdaptorTest_TestVnpyAdaptor_testAdaptorAddConverter - 2018.09.25 at 21h 33m 19s.xml">
-      <configuration name="Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testAdaptorAddConverter" configurationId="tests" />
+    <history-entry file="Nosetests_for_baseTest_TestDataVendor_testParseFilename - 2018.12.03 at 22h 44m 43s.xml">
+      <configuration name="Nosetests for baseTest.TestDataVendor.testParseFilename" configurationId="tests" />
     </history-entry>
-    <history-entry file="Nosetests_for_vnpyAdaptorTest_TestVnpyAdaptor_testAdaptorGetExistedDay - 2018.09.25 at 21h 13m 05s.xml">
-      <configuration name="Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testAdaptorGetExistedDay" configurationId="tests" />
+    <history-entry file="Nosetests_for_vnpyAdaptorTest_TestVnpyAdaptor_testJaqsDataIsFileExisted - 2018.12.03 at 22h 17m 05s.xml">
+      <configuration name="Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testJaqsDataIsFileExisted" configurationId="tests" />
     </history-entry>
-    <history-entry file="Nosetests_for_vnpyAdaptorTest_TestVnpyAdaptor_testAdaptorSetDb - 2018.09.25 at 21h 15m 43s.xml">
-      <configuration name="Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testAdaptorSetDb" configurationId="tests" />
+    <history-entry file="Nosetests_for_vnpyAdaptorTest_TestVnpyAdaptor_testJaqsDataIsFileExisted - 2018.12.03 at 22h 26m 54s.xml">
+      <configuration name="Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testJaqsDataIsFileExisted" configurationId="tests" />
     </history-entry>
-    <history-entry file="Nosetests_for_vnpyAdaptorTest_TestVnpyAdaptor_testAdaptorSetDb - 2018.09.25 at 21h 34m 31s.xml">
-      <configuration name="Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testAdaptorSetDb" configurationId="tests" />
+    <history-entry file="Nosetests_for_vnpyAdaptorTest_TestVnpyAdaptor_testJaqsDataIsFileExisted - 2018.12.03 at 22h 28m 54s.xml">
+      <configuration name="Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testJaqsDataIsFileExisted" configurationId="tests" />
     </history-entry>
-    <history-entry file="Nosetests_for_vnpyAdaptorTest_TestVnpyAdaptor_testConverterGetFiles - 2018.09.25 at 21h 42m 13s.xml">
-      <configuration name="Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testConverterGetFiles" configurationId="tests" />
+    <history-entry file="Nosetests_for_vnpyAdaptorTest_TestVnpyAdaptor_testJaqsFilesToDb - 2018.12.03 at 22h 30m 28s.xml">
+      <configuration name="Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testJaqsFilesToDb" configurationId="tests" />
     </history-entry>
-    <history-entry file="Nosetests_for_vnpyAdaptorTest_TestVnpyAdaptor_testJaqsConverterGetData - 2018.09.25 at 21h 59m 00s.xml">
-      <configuration name="Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testJaqsConverterGetData" configurationId="tests" />
+    <history-entry file="Nosetests_for_vnpyAdaptorTest_TestVnpyAdaptor_testJaqsFilesToDb - 2018.12.03 at 22h 30m 47s.xml">
+      <configuration name="Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testJaqsFilesToDb" configurationId="tests" />
     </history-entry>
-    <history-entry file="Nosetests_for_vnpyAdaptorTest_TestVnpyAdaptor_testJaqsConverterGetData - 2018.09.25 at 21h 59m 50s.xml">
-      <configuration name="Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testJaqsConverterGetData" configurationId="tests" />
+    <history-entry file="Nosetests_for_vnpyAdaptorTest_TestVnpyAdaptor_testJaqsFilesToDb - 2018.12.03 at 22h 31m 04s.xml">
+      <configuration name="Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testJaqsFilesToDb" configurationId="tests" />
     </history-entry>
-    <history-entry file="Nosetests_for_vnpyAdaptorTest_TestVnpyAdaptor_testJaqsConverterGetData - 2018.09.25 at 22h 03m 53s.xml">
-      <configuration name="Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testJaqsConverterGetData" configurationId="tests" />
+    <history-entry file="Nosetests_for_vnpyAdaptorTest_TestVnpyAdaptor_testRqDataFilesToDb - 2018.12.03 at 22h 39m 29s.xml">
+      <configuration name="Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testRqDataFilesToDb" configurationId="tests" />
     </history-entry>
-    <history-entry file="Nosetests_for_vnpyAdaptorTest_TestVnpyAdaptor_testJaqsConverterGetFiles - 2018.09.25 at 21h 55m 00s.xml">
-      <configuration name="Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testJaqsConverterGetFiles" configurationId="tests" />
+    <history-entry file="Nosetests_for_vnpyAdaptorTest_TestVnpyAdaptor_testRqDataFilesToDb - 2018.12.03 at 22h 40m 52s.xml">
+      <configuration name="Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testRqDataFilesToDb" configurationId="tests" />
     </history-entry>
-    <history-entry file="Nosetests_for_vnpyAdaptorTest_TestVnpyAdaptor_testVnpyAdaptorFilesToDb - 2018.09.25 at 22h 10m 40s.xml">
-      <configuration name="Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testVnpyAdaptorFilesToDb" configurationId="tests" />
+    <history-entry file="Nosetests_for_vnpyAdaptorTest_TestVnpyAdaptor_testRqDataFilesToDb - 2018.12.03 at 22h 46m 07s.xml">
+      <configuration name="Nosetests for vnpyAdaptorTest.TestVnpyAdaptor.testRqDataFilesToDb" configurationId="tests" />
     </history-entry>
   </component>
   <component name="ToolWindowManager">
-    <frame x="1912" y="-8" width="1936" height="1056" extended-state="6" />
+    <frame x="1911" y="-9" width="1938" height="1048" extended-state="6" />
     <editor active="true" />
     <layout>
-      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.21244635" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
+      <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.19527897" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="true" content_ui="tabs" />
-      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.30760625" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
-      <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
-      <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.5872483" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
-      <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.19152361" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
-      <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32997763" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
-      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.44071588" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
+      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32915717" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
+      <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32915717" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
+      <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25398633" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
+      <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.30751708" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
+      <window_info id="Structure" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.19133192" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
+      <window_info id="Terminal" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32915717" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Favorites" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="2" side_tool="true" content_ui="tabs" />
-      <window_info id="Data View" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.39538628" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
+      <window_info id="Debug" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.40318906" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
+      <window_info id="Data View" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.458691" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Cvs" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="4" side_tool="false" content_ui="tabs" />
       <window_info id="Message" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Commander" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="0" side_tool="false" content_ui="tabs" />
       <window_info id="Inspection" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.4" sideWeight="0.5" order="5" side_tool="false" content_ui="tabs" />
       <window_info id="Hierarchy" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="2" side_tool="false" content_ui="combo" />
-      <window_info id="Find" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.32997763" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
       <window_info id="Ant Build" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="1" side_tool="false" content_ui="tabs" />
     </layout>
   </component>
@@ -462,55 +575,11 @@
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
-      <option name="time" value="1" />
+      <option name="time" value="2" />
     </breakpoint-manager>
     <watches-manager />
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/easeData/rqData.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="294">
-          <caret line="14" column="13" lean-forward="false" selection-start-line="14" selection-start-column="13" selection-end-line="14" selection-end-column="13" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/easeData/dbConnector.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="336">
-          <caret line="16" column="0" lean-forward="false" selection-start-line="16" selection-start-column="0" selection-end-line="16" selection-end-column="0" />
-          <folding>
-            <element signature="e#16#26#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/easeData/functions.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="420">
-          <caret line="23" column="23" lean-forward="true" selection-start-line="23" selection-start-column="23" selection-end-line="23" selection-end-column="23" />
-          <folding>
-            <element signature="e#16#25#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/easeData/collector.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="378">
-          <caret line="20" column="42" lean-forward="true" selection-start-line="20" selection-start-column="42" selection-end-line="20" selection-end-column="42" />
-          <folding>
-            <element signature="e#16#35#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/externalData/rqData/current_main_contract.json">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="0">
-          <caret line="0" column="60" lean-forward="true" selection-start-line="0" selection-start-column="60" selection-end-line="0" selection-end-column="60" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/easeData/__init__.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="21">
@@ -527,13 +596,11 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/easeData/operator.py" />
-    <entry file="file://$PROJECT_DIR$/easeData/dbConnector.py">
+    <entry file="file://$PROJECT_DIR$/easeData/database.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="336">
           <caret line="16" column="0" lean-forward="false" selection-start-line="16" selection-start-column="0" selection-end-line="16" selection-end-column="0" />
-          <folding>
-            <element signature="e#16#26#0" expanded="true" />
-          </folding>
+          <folding />
         </state>
       </provider>
     </entry>
@@ -552,7 +619,43 @@
         <state relative-caret-position="0">
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
           <folding>
-            <element signature="e#16#35#0" expanded="true" />
+            <element signature="e#16#25#0" expanded="true" />
+            <element signature="e#1094#12739#0" expanded="false" />
+            <element signature="e#13355#16226#0" expanded="false" />
+            <element signature="e#19021#19882#0" expanded="false" />
+            <element signature="e#19956#20429#0" expanded="false" />
+            <element signature="e#20553#21462#0" expanded="false" />
+            <element signature="e#21533#21926#0" expanded="false" />
+            <element signature="e#21995#22384#0" expanded="false" />
+            <element signature="e#22489#23178#0" expanded="false" />
+            <element signature="e#23242#23702#0" expanded="false" />
+            <element signature="e#23775#24836#0" expanded="false" />
+            <element signature="e#25563#26169#0" expanded="false" />
+            <element signature="e#26227#26710#0" expanded="false" />
+            <element signature="e#26764#27275#0" expanded="false" />
+            <element signature="e#27333#27821#0" expanded="false" />
+            <element signature="e#27905#28617#0" expanded="false" />
+            <element signature="e#28663#29168#0" expanded="false" />
+            <element signature="e#29227#29903#0" expanded="false" />
+            <element signature="e#29943#30397#0" expanded="false" />
+            <element signature="e#30447#30741#0" expanded="false" />
+            <element signature="e#30798#31316#0" expanded="false" />
+            <element signature="e#31375#32662#0" expanded="false" />
+            <element signature="e#32755#34838#0" expanded="false" />
+            <element signature="e#34915#35741#0" expanded="false" />
+            <element signature="e#35791#36651#0" expanded="false" />
+            <element signature="e#36723#38546#0" expanded="false" />
+            <element signature="e#38596#39451#0" expanded="false" />
+            <element signature="e#39488#40140#0" expanded="false" />
+            <element signature="e#40201#40927#0" expanded="false" />
+            <element signature="e#40983#41662#0" expanded="false" />
+            <element signature="e#41717#42382#0" expanded="false" />
+            <element signature="e#42545#46361#0" expanded="false" />
+            <element signature="e#48156#48889#0" expanded="false" />
+            <element signature="e#48967#49711#0" expanded="false" />
+            <element signature="e#50663#51145#0" expanded="false" />
+            <element signature="e#51195#51634#0" expanded="false" />
+            <element signature="e#51679#52321#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -569,13 +672,11 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/easeData/operator.py" />
-    <entry file="file://$PROJECT_DIR$/easeData/dbConnector.py">
+    <entry file="file://$PROJECT_DIR$/easeData/database.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="336">
           <caret line="16" column="0" lean-forward="true" selection-start-line="16" selection-start-column="0" selection-end-line="16" selection-end-column="0" />
-          <folding>
-            <element signature="e#16#26#0" expanded="true" />
-          </folding>
+          <folding />
         </state>
       </provider>
     </entry>
@@ -584,20 +685,54 @@
         <state relative-caret-position="42">
           <caret line="2" column="0" lean-forward="false" selection-start-line="2" selection-start-column="0" selection-end-line="2" selection-end-column="0" />
           <folding>
-            <element signature="e#16#35#0" expanded="true" />
+            <element signature="e#16#25#0" expanded="true" />
+            <element signature="e#1094#12739#0" expanded="false" />
+            <element signature="e#13355#16226#0" expanded="false" />
+            <element signature="e#19021#19882#0" expanded="false" />
+            <element signature="e#19956#20429#0" expanded="false" />
+            <element signature="e#20553#21462#0" expanded="false" />
+            <element signature="e#21533#21926#0" expanded="false" />
+            <element signature="e#21995#22384#0" expanded="false" />
+            <element signature="e#22489#23178#0" expanded="false" />
+            <element signature="e#23242#23702#0" expanded="false" />
+            <element signature="e#23775#24836#0" expanded="false" />
+            <element signature="e#25563#26169#0" expanded="false" />
+            <element signature="e#26227#26710#0" expanded="false" />
+            <element signature="e#26764#27275#0" expanded="false" />
+            <element signature="e#27333#27821#0" expanded="false" />
+            <element signature="e#27905#28617#0" expanded="false" />
+            <element signature="e#28663#29168#0" expanded="false" />
+            <element signature="e#29227#29903#0" expanded="false" />
+            <element signature="e#29943#30397#0" expanded="false" />
+            <element signature="e#30447#30741#0" expanded="false" />
+            <element signature="e#30798#31316#0" expanded="false" />
+            <element signature="e#31375#32662#0" expanded="false" />
+            <element signature="e#32755#34838#0" expanded="false" />
+            <element signature="e#34915#35741#0" expanded="false" />
+            <element signature="e#35791#36651#0" expanded="false" />
+            <element signature="e#36723#38546#0" expanded="false" />
+            <element signature="e#38596#39451#0" expanded="false" />
+            <element signature="e#39488#40140#0" expanded="false" />
+            <element signature="e#40201#40927#0" expanded="false" />
+            <element signature="e#40983#41662#0" expanded="false" />
+            <element signature="e#41717#42382#0" expanded="false" />
+            <element signature="e#42545#46361#0" expanded="false" />
+            <element signature="e#48156#48889#0" expanded="false" />
+            <element signature="e#48967#49711#0" expanded="false" />
+            <element signature="e#50663#51145#0" expanded="false" />
+            <element signature="e#51195#51634#0" expanded="false" />
+            <element signature="e#51679#52321#0" expanded="false" />
           </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/easeData/testSetting.json" />
     <entry file="file://$PROJECT_DIR$/easeData/operator.py" />
-    <entry file="file://$PROJECT_DIR$/easeData/dbConnector.py">
+    <entry file="file://$PROJECT_DIR$/easeData/database.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="42">
           <caret line="2" column="14" lean-forward="true" selection-start-line="2" selection-start-column="14" selection-end-line="2" selection-end-column="14" />
-          <folding>
-            <element signature="e#16#26#0" expanded="true" />
-          </folding>
+          <folding />
         </state>
       </provider>
     </entry>
@@ -616,7 +751,43 @@
         <state relative-caret-position="0">
           <caret line="0" column="14" lean-forward="true" selection-start-line="0" selection-start-column="14" selection-end-line="0" selection-end-column="14" />
           <folding>
-            <element signature="e#16#35#0" expanded="true" />
+            <element signature="e#16#25#0" expanded="true" />
+            <element signature="e#1094#12739#0" expanded="false" />
+            <element signature="e#13355#16226#0" expanded="false" />
+            <element signature="e#19021#19882#0" expanded="false" />
+            <element signature="e#19956#20429#0" expanded="false" />
+            <element signature="e#20553#21462#0" expanded="false" />
+            <element signature="e#21533#21926#0" expanded="false" />
+            <element signature="e#21995#22384#0" expanded="false" />
+            <element signature="e#22489#23178#0" expanded="false" />
+            <element signature="e#23242#23702#0" expanded="false" />
+            <element signature="e#23775#24836#0" expanded="false" />
+            <element signature="e#25563#26169#0" expanded="false" />
+            <element signature="e#26227#26710#0" expanded="false" />
+            <element signature="e#26764#27275#0" expanded="false" />
+            <element signature="e#27333#27821#0" expanded="false" />
+            <element signature="e#27905#28617#0" expanded="false" />
+            <element signature="e#28663#29168#0" expanded="false" />
+            <element signature="e#29227#29903#0" expanded="false" />
+            <element signature="e#29943#30397#0" expanded="false" />
+            <element signature="e#30447#30741#0" expanded="false" />
+            <element signature="e#30798#31316#0" expanded="false" />
+            <element signature="e#31375#32662#0" expanded="false" />
+            <element signature="e#32755#34838#0" expanded="false" />
+            <element signature="e#34915#35741#0" expanded="false" />
+            <element signature="e#35791#36651#0" expanded="false" />
+            <element signature="e#36723#38546#0" expanded="false" />
+            <element signature="e#38596#39451#0" expanded="false" />
+            <element signature="e#39488#40140#0" expanded="false" />
+            <element signature="e#40201#40927#0" expanded="false" />
+            <element signature="e#40983#41662#0" expanded="false" />
+            <element signature="e#41717#42382#0" expanded="false" />
+            <element signature="e#42545#46361#0" expanded="false" />
+            <element signature="e#48156#48889#0" expanded="false" />
+            <element signature="e#48967#49711#0" expanded="false" />
+            <element signature="e#50663#51145#0" expanded="false" />
+            <element signature="e#51195#51634#0" expanded="false" />
+            <element signature="e#51679#52321#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -632,13 +803,11 @@
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/easeData/operator.py" />
-    <entry file="file://$PROJECT_DIR$/easeData/dbConnector.py">
+    <entry file="file://$PROJECT_DIR$/easeData/database.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="609">
           <caret line="29" column="8" lean-forward="true" selection-start-line="29" selection-start-column="8" selection-end-line="29" selection-end-column="8" />
-          <folding>
-            <element signature="e#16#26#0" expanded="true" />
-          </folding>
+          <folding />
         </state>
       </provider>
     </entry>
@@ -657,7 +826,7 @@
     <entry file="file://$PROJECT_DIR$/test/test_setting.json" />
     <entry file="file://$PROJECT_DIR$/test.json" />
     <entry file="file://$PROJECT_DIR$/test/test_setting_temp.json" />
-    <entry file="file://$PROJECT_DIR$/externalData/rqData/main_contract_history.csv">
+    <entry file="file://$PROJECT_DIR$/externalData/RQData/main_contract_history.csv">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
           <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
@@ -668,107 +837,178 @@
     <entry file="file://$PROJECT_DIR$/easeData/futureExchangeMap.json" />
     <entry file="file://$PROJECT_DIR$/easeData/operator.py" />
     <entry file="file://$PROJECT_DIR$/log/2018-09-03.log" />
-    <entry file="file://$PROJECT_DIR$/easeData/config.json">
+    <entry file="file://$PROJECT_DIR$/easeData/main.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="105">
-          <caret line="5" column="1" lean-forward="true" selection-start-line="5" selection-start-column="1" selection-end-line="5" selection-end-column="1" />
+        <state relative-caret-position="546">
+          <caret line="31" column="28" lean-forward="false" selection-start-line="31" selection-start-column="28" selection-end-line="31" selection-end-column="28" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/externalData/RQData/current_main_contract.json">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="462">
+          <caret line="22" column="18" lean-forward="false" selection-start-line="22" selection-start-column="18" selection-end-line="22" selection-end-column="18" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/easeData/rqData.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="2772">
-          <caret line="136" column="38" lean-forward="false" selection-start-line="136" selection-start-column="38" selection-end-line="136" selection-end-column="38" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/externalData/rqData/current_main_contract.json">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="252">
-          <caret line="33" column="20" lean-forward="false" selection-start-line="33" selection-start-column="20" selection-end-line="33" selection-end-column="20" />
+        <state relative-caret-position="861">
+          <caret line="45" column="32" lean-forward="true" selection-start-line="45" selection-start-column="32" selection-end-line="45" selection-end-column="32" />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/easeData/log.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="378">
-          <caret line="22" column="30" lean-forward="false" selection-start-line="22" selection-start-column="30" selection-end-line="22" selection-end-column="30" />
-          <folding>
-            <element signature="e#16#25#0" expanded="true" />
-          </folding>
+        <state relative-caret-position="-669">
+          <caret line="20" column="27" lean-forward="false" selection-start-line="20" selection-start-column="27" selection-end-line="20" selection-end-column="27" />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/easeData/main.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="609">
-          <caret line="34" column="29" lean-forward="false" selection-start-line="34" selection-start-column="29" selection-end-line="34" selection-end-column="29" />
-          <folding>
-            <element signature="e#16#25#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/test/jaqsCollectorTest.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="693">
-          <caret line="204" column="65" lean-forward="false" selection-start-line="204" selection-start-column="65" selection-end-line="204" selection-end-column="65" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/easeData/functions.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="5754">
-          <caret line="281" column="37" lean-forward="false" selection-start-line="281" selection-start-column="37" selection-end-line="281" selection-end-column="37" />
-          <folding>
-            <element signature="e#16#25#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
+    <entry file="file://$PROJECT_DIR$/easeData/null.py" />
     <entry file="file://$PROJECT_DIR$/test/functionTest.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="544">
-          <caret line="87" column="11" lean-forward="false" selection-start-line="87" selection-start-column="11" selection-end-line="87" selection-end-column="11" />
+        <state relative-caret-position="777">
+          <caret line="42" column="41" lean-forward="true" selection-start-line="42" selection-start-column="41" selection-end-line="42" selection-end-column="41" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/easeData/text.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="273">
+          <caret line="13" column="32" lean-forward="false" selection-start-line="13" selection-start-column="32" selection-end-line="13" selection-end-column="32" />
           <folding />
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/easeData/const.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="231">
-          <caret line="11" column="33" lean-forward="true" selection-start-line="11" selection-start-column="33" selection-end-line="11" selection-end-column="33" />
+        <state relative-caret-position="378">
+          <caret line="57" column="29" lean-forward="false" selection-start-line="57" selection-start-column="29" selection-end-line="57" selection-end-column="57" />
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/easeData/collector.py">
+    <entry file="file://$PROJECT_DIR$/easeData/functions.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1048">
-          <caret line="284" column="39" lean-forward="false" selection-start-line="284" selection-start-column="39" selection-end-line="284" selection-end-column="39" />
+        <state relative-caret-position="969">
+          <caret line="115" column="7" lean-forward="false" selection-start-line="115" selection-start-column="7" selection-end-line="115" selection-end-column="7" />
           <folding>
-            <element signature="e#16#35#0" expanded="true" />
+            <element signature="e#16#25#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/test/collectorTest.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="131">
+          <caret line="118" column="0" lean-forward="true" selection-start-line="118" selection-start-column="0" selection-end-line="118" selection-end-column="0" />
+          <folding>
+            <element signature="e#16#25#0" expanded="true" />
+            <element signature="e#594#3521#0" expanded="false" />
+            <element signature="e#3574#3969#0" expanded="false" />
           </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/test/vnpyAdaptorTest.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="2016">
-          <caret line="126" column="0" lean-forward="true" selection-start-line="126" selection-start-column="0" selection-end-line="126" selection-end-column="0" />
+        <state relative-caret-position="1347">
+          <caret line="76" column="54" lean-forward="true" selection-start-line="76" selection-start-column="54" selection-end-line="76" selection-end-column="54" />
           <folding>
-            <element signature="e#16#30#0" expanded="true" />
+            <element signature="e#16#31#0" expanded="true" />
           </folding>
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/easeData/dbConnector.py">
+    <entry file="file://$PROJECT_DIR$/easeData/base.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="145">
-          <caret line="74" column="26" lean-forward="true" selection-start-line="74" selection-start-column="26" selection-end-line="74" selection-end-column="26" />
+        <state relative-caret-position="1050">
+          <caret line="50" column="0" lean-forward="true" selection-start-line="50" selection-start-column="0" selection-end-line="50" selection-end-column="0" />
           <folding>
-            <element signature="e#16#26#0" expanded="true" />
+            <element signature="e#15#24#0" expanded="true" />
           </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/test/baseTest.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="570">
+          <caret line="58" column="32" lean-forward="true" selection-start-line="58" selection-start-column="32" selection-end-line="58" selection-end-column="32" />
+          <folding>
+            <element signature="e#16#25#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/easeData/database.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="273">
+          <caret line="13" column="42" lean-forward="true" selection-start-line="13" selection-start-column="42" selection-end-line="13" selection-end-column="42" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/easeData/analyze.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="567">
+          <caret line="32" column="48" lean-forward="false" selection-start-line="32" selection-start-column="48" selection-end-line="32" selection-end-column="48" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/easeData/collector.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="2776">
+          <caret line="642" column="35" lean-forward="false" selection-start-line="642" selection-start-column="35" selection-end-line="642" selection-end-column="35" />
+          <folding>
+            <element signature="e#16#25#0" expanded="true" />
+            <element signature="e#1094#12739#0" expanded="false" />
+            <element signature="e#13355#16226#0" expanded="false" />
+            <element signature="e#19021#19882#0" expanded="false" />
+            <element signature="e#19956#20429#0" expanded="false" />
+            <element signature="e#20553#21462#0" expanded="false" />
+            <element signature="e#21533#21926#0" expanded="false" />
+            <element signature="e#21995#22384#0" expanded="false" />
+            <element signature="e#22489#23178#0" expanded="false" />
+            <element signature="e#23242#23702#0" expanded="false" />
+            <element signature="e#23775#24836#0" expanded="false" />
+            <element signature="e#25563#26169#0" expanded="false" />
+            <element signature="e#26227#26710#0" expanded="false" />
+            <element signature="e#26764#27275#0" expanded="false" />
+            <element signature="e#27333#27821#0" expanded="false" />
+            <element signature="e#27905#28617#0" expanded="false" />
+            <element signature="e#28663#29168#0" expanded="false" />
+            <element signature="e#29227#29903#0" expanded="false" />
+            <element signature="e#29943#30397#0" expanded="false" />
+            <element signature="e#30447#30741#0" expanded="false" />
+            <element signature="e#30798#31316#0" expanded="false" />
+            <element signature="e#31375#32662#0" expanded="false" />
+            <element signature="e#32755#34838#0" expanded="false" />
+            <element signature="e#34915#35741#0" expanded="false" />
+            <element signature="e#35791#36651#0" expanded="false" />
+            <element signature="e#36723#38546#0" expanded="false" />
+            <element signature="e#38596#39451#0" expanded="false" />
+            <element signature="e#39488#40140#0" expanded="false" />
+            <element signature="e#40201#40927#0" expanded="false" />
+            <element signature="e#40983#41662#0" expanded="false" />
+            <element signature="e#41717#42382#0" expanded="false" />
+            <element signature="e#42545#46361#0" expanded="false" />
+            <element signature="e#48156#48889#0" expanded="false" />
+            <element signature="e#48967#49711#0" expanded="false" />
+            <element signature="e#50663#51145#0" expanded="false" />
+            <element signature="e#51195#51634#0" expanded="false" />
+            <element signature="e#51679#52321#0" expanded="false" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/easeData/config.json">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="147">
+          <caret line="7" column="1" lean-forward="true" selection-start-line="7" selection-start-column="1" selection-end-line="7" selection-end-column="1" />
+          <folding />
         </state>
       </provider>
     </entry>

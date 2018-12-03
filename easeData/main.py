@@ -2,8 +2,8 @@
 
 import os
 import logging
-from functions import (initDataDirectory, )
-from dbConnector import MongoDbConnector, VnpyAdaptor
+from functions import (initDataDir, )
+from database import MongoDbConnector, VnpyAdaptor
 from collector import JaqsDataCollector
 from log import Logger
 
@@ -29,7 +29,7 @@ def getCollector(logger, dp, dbAdaptor):
 
 
 def main():
-    dp = initDataDirectory()
+    dp = initDataDir()
     level = logging.DEBUG
 
     logger = getLogger(level)

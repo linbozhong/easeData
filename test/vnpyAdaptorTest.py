@@ -1,125 +1,82 @@
 # coding:utf-8
 
-import logging
 import unittest
-import os
-import easeData.functions as fn
+from datetime import datetime
 from easeData.const import *
-from easeData.dbConnector import VnpyAdaptor, MongoDbConnector, FormatConverter, RqConverter, JaqsConverter
-from easeData.log import Logger
+from easeData.database import (VnpyAdaptor)
 
-dataPath = fn.initDataDirectory()
-dbConnector = MongoDbConnector()
-logger = Logger('logger')
-logger.setLevel(logging.INFO)
-logger.addConsoleHandler()
-logger.addFileHandler()
+vnpyAdaptor = VnpyAdaptor()
 
-vnpyAdaptor = VnpyAdaptor(dbConnector, logger, dataPath)
+vnpyAdaptor.setFreq('bar')
+vnpyAdaptor.setActiveConverter('JQDataConverter')
+vnpyAdaptor.setTargetPath('future', 'a9999')
 
-genConvertor = FormatConverter(vnpyAdaptor)
-rqConverter = RqConverter(vnpyAdaptor)
-jaqsConverter = JaqsConverter(vnpyAdaptor)
+csvLoader = vnpyAdaptor.csvLoader
 
-vnpyAdaptor.addConverter(rqConverter)
-vnpyAdaptor.addConverter(jaqsConverter)
 
-rqDataPath = os.path.join(dataPath, DIR_RQ_PRICE_DATA, FUTURE)
-jaqsDataPath = os.path.join(dataPath, DIR_JAQS_PRICE_DATA, FUTURE)
+class TestCSVFilesLoader(unittest.TestCase):
+    def setUp(self):
+        self.obj = csvLoader
+
+    def testGetFilePaths(self):
+        path = self.obj.getTargetPath()
+        print(path)
+        gen = self.obj.getFilePaths(path)
+        for path in gen:
+            print(path)
+
+    def testLoadFiles(self):
+        path = self.obj.getTargetPath()
+        gen = self.obj.loadFiles(path)
+        csv1 = gen.next()
+        print(csv1)
+
 
 class TestVnpyAdaptor(unittest.TestCase):
-    def testAdaptorSetDb(self):
-        vnpyAdaptor.setDb()
-        print(vnpyAdaptor.db)
-        print(vnpyAdaptor.db.collection_names())
+    def setUp(self):
+        self.obj = vnpyAdaptor
 
-    def testAdaptorAddConverter(self):
-        print(vnpyAdaptor.converters)
-
-    def testAdaptorGetExistedDay(self):
-        print(vnpyAdaptor.getDbExistedDataDay('rb'))
-        print(vnpyAdaptor.getDbExistedDataDay('rb88'))
-
-    def testAdaptorGetContractPath(self):
-        print(vnpyAdaptor.getContractPath('jaqsConverter', 'rb'))
-        print(vnpyAdaptor.getContractPath('rqConverter', 'rb1901'))
-
-    # def testGenSourceBarDict(self):
-    #     path = os.path.join(vnpyAdaptor.dataPath, DIR_JAQS_PRICE_DATA, FUTURE)
-    #     genFiles = vnpyAdaptor.genFilePaths(path)
-    #     print(genFiles.send(None))
-    #
-    #     csvDictReader = vnpyAdaptor.genAllDayBars(genFiles)
-    #     print(csvDictReader.send(None))
-    #
-    #     bar = vnpyAdaptor.genBar(csvDictReader)
-    #     print(bar.send(None))
-    #
-    #     print('Convert Bar to vnpy format:')
-    #     print(vnpyAdaptor.convertBar(bar.send(None)))
-    #
-    # def testGenFilePath(self):
-    #     path = os.path.join(vnpyAdaptor.dataPath, DIR_JAQS_PRICE_DATA, FUTURE, 'rb', 'rb')
-    #     genFiles = vnpyAdaptor.genFilePaths(path)
-    #     while True:
-    #         try:
-    #             genFiles.send(None)
-    #         except StopIteration:
-    #             print('Over.')
-    #             break
-    #
-    # def testGenFilePath2(self):
-    #     path = os.path.join(vnpyAdaptor.dataPath, DIR_JAQS_PRICE_DATA, FUTURE, 'rb', 'rb')
-    #     vnpyAdaptor.genFilePaths(path)
+    def testInit(self):
+        print(self.obj.freq)
+        print(self.obj.activeConverter)
+        print(self.obj.targetPath)
 
     def testConverterParseDt(self):
-        print(genConvertor.parseDatetime('2018-09-20 21:08:48'))
-        print(genConvertor.parseDatetime('20180920 210848'))
-        print(genConvertor.parseDatetime('2018-09-20 210848'))
+        converter = self.obj.activeConverter
+        print(converter.parseDatetime('2018-09-20 21:08:48'))
+        print(converter.parseDatetime('20180920 210848'))
+        print(converter.parseDatetime('2018-09-20 210848'))
 
-    def testConverterGeneralKey(self):
-        print(rqConverter.generalKey)
-        print(jaqsConverter.generalKey)
+    def testJQDataIsFileExisted(self):
+        self.obj.setActiveConverter('JQDataConverter')
+        converter = self.obj.activeConverter
+        for i in range(1, 13):
+            print('{}:{}'.format(i, converter.isMonthExisted('a9999', 2018, i)))
 
-    def testRqConverterGetFiles(self):
-        fileGen = rqConverter.getFiles(os.path.join(rqDataPath, 'test'))
-        for i in range(3):
-            print(fileGen.next())
+        filename = '{}_{}_{}.csv'.format('a9999', datetime.today().year, datetime.today().month)
+        print('{}:{}'.format(filename, converter.isCsvDataExistedDB(filename)))
 
-    def testJaqsConverterGetFiles(self):
-        # fileGen = jaqsConverter.getFiles(os.path.join(jaqsDataPath, 'rb'))
-        fileGen = jaqsConverter.getFiles(os.path.join(jaqsDataPath, 'rb'), skipDbExisted=False)
-        for i in range(3):
-            print(fileGen.next())
+    def testJqDataFilesToDb(self):
+        self.obj.setActiveConverter('JQDataConverter')
+        self.obj.filesToDb()
 
-    def testRqConverterGetData(self):
-        fileGen = rqConverter.getFiles(os.path.join(rqDataPath, 'test'))
-        csvGen = rqConverter.getData(fileGen)
-        for csvItem in csvGen:
-            print(rqConverter.bar['symbol'])
-            print(csvItem)
-            for i in range(3):
-                rec = csvItem.next()
-                print(rec)
-                print(rqConverter.convertToBar(rec))
+    def testJaqsDataIsFileExisted(self):
+        self.obj.setActiveConverter('JaqsDataConverter')
+        converter = self.obj.activeConverter
+        print(converter.getDbExistedDataDay('rb1905'))
 
-    def testJaqsConverterGetData(self):
-        fileGen = jaqsConverter.getFiles(os.path.join(jaqsDataPath, 'test'), skipDbExisted=False)
-        csvGen = jaqsConverter.getData(fileGen)
-        for csvItem in csvGen:
-            print(jaqsConverter.bar['symbol'])
-            print(csvItem)
-            for i in range(3):
-                rec = csvItem.next()
-                print(rec)
-                print(jaqsConverter.convertToBar(rec))
+        filename = 'rb1905_20181123-210100_to_20181126-150000.csv'
+        print(converter.isCsvDataExistedDB(filename))
 
-    def testVnpyAdaptorFilesToDb(self):
-        # path = vnpyAdaptor.getContractPath(rqConverter.name, 'rb88')
-        # vnpyAdaptor.filesToDb(rqConverter.name, path)
+    def testJaqsFilesToDb(self):
+        self.obj.setActiveConverter('JaqsDataConverter')
+        self.obj.setTargetPath('future', 'rb1905')
+        self.obj.filesToDb()
 
-        path2 = vnpyAdaptor.getContractPath(jaqsConverter.name, 'AP901')
-        vnpyAdaptor.filesToDb(jaqsConverter.name, path2)
+    def testRqDataFilesToDb(self):
+        self.obj.setActiveConverter('RQDataConverter')
+        self.obj.setTargetPath('future', 'rb88')
+        self.obj.filesToDb()
 
 
 if __name__ == '__main__':

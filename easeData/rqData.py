@@ -37,7 +37,7 @@ def get_latset_main_contract(symbol):
 
 def get_contracts(**kwargs):
     # Get All the instrument info. You can specify date use parameter date='20180727'
-    df = all_instruments(type="Future", country='cn', **kwargs)
+    df = all_instruments(type="Future", market='cn', **kwargs)
     df = df.drop_duplicates(['underlying_symbol'])
     df = df[['exchange', 'underlying_symbol']]
     return df
