@@ -7,12 +7,13 @@ import pymongo
 import time
 import codecs
 import importlib
+import pandas as pd
 from datetime import datetime
 
 from const import *
 from text import *
 from base import LoggerWrapper, DataVendor
-from functions import (rmDateDash)
+from functions import (rmDateDash, strToDate)
 
 
 class DataBaseConnector(LoggerWrapper):
@@ -73,12 +74,13 @@ class CSVFilesLoader(LoggerWrapper):
             if files:
                 files = [f for f in files if f.endswith('csv')]
                 for filename in files:
-                    converter = self._adaptor.activeConverter
-                    if converter.isCsvDataExistedDB(filename):
-                        self.info(u'{}:{}'.format(FILE_DATA_EXISTED_IN_DB, filename))
-                    else:
-                        self.info(u'{}:{}'.format(FILE_LOADING, filename))
-                        yield os.path.join(root, filename)
+                    if self._adaptor.freq == BAR:
+                        converter = self._adaptor.activeConverter
+                        if converter.isCsvBarInDB(filename):
+                            self.info(u'{}:{}'.format(FILE_DATA_EXISTED_IN_DB, filename))
+                            continue
+                    self.info(u'{}:{}'.format(FILE_LOADING, filename))
+                    yield os.path.join(root, filename)
 
     def getCsvData(self, pathIterator):
         """
@@ -111,6 +113,7 @@ class VnpyAdaptor(LoggerWrapper):
 
         self._dbConnector = MongoDbConnector()
         self._lastCollection = None
+        self._lastDbName = None
         self._db = None
         self.freq = None
         self.targetPath = None
@@ -136,9 +139,18 @@ class VnpyAdaptor(LoggerWrapper):
         :return:
         """
         collection = self._db[colName]
-        if not collection.index_information():
+        if not collection.index_information():  # 判断集合是否存在
             collection.create_index([('datetime', pymongo.ASCENDING)], unique=True)
+        # 保存工作状态
+        self._lastDbName = self._db.name
         self._lastCollection = collection
+
+    def getDb(self):
+        """
+        获取db对象
+        :return:
+        """
+        return self._db
 
     def getCollection(self, colName):
         """
@@ -208,7 +220,7 @@ class VnpyAdaptor(LoggerWrapper):
         :return: None
         """
         curColName = document['symbol']
-        if self._lastCollection is None or self._lastCollection.name != curColName:
+        if self._lastCollection is None or self._lastCollection.name != curColName or self._lastDbName != self._db.name:
             self._setDbCollection(curColName)
         flt = {'datetime': document['datetime']}
         self._lastCollection.replace_one(flt, document, upsert=True)
@@ -228,6 +240,13 @@ class VnpyAdaptor(LoggerWrapper):
                 bar = self.activeConverter.convertToVnpyBar(bar)
                 self.saveBarToDb(bar)
         self.info(u'{}:{}'.format(TIME_CONSUMPTION, time.time() - start))
+
+    def dfToDb(self, df, symbol):
+        self.activeConverter.bar['symbol'] = symbol
+        self.activeConverter.bar['vtSymbol'] = symbol
+        for (idx, bar) in df.iterrows():
+            bar = self.activeConverter.convertToVnpyBar(bar)
+            self.saveBarToDb(bar)
 
     def saveAllBar(self):
         pass
@@ -264,20 +283,26 @@ class FormatConverter(DataVendor):
                 日期字符串。支持格式: %Y-%m-%d %H:%M:%S 或 %Y%m%d %H%M%S
         :return: tuple(datetime, string, string)
         """
-        date_, time_ = dtStr.split()
-        if '-' in date_:
-            date_ = rmDateDash(date_)
-        if ':' in time_:
-            time_ = ''.join(time_.split(':'))
-        year, month, day, = date_[0:4], date_[4:6], date_[6:]
-        hour, minute, second = time_[0:2], time_[2:4], time_[4:]
-        datetime_ = datetime(int(year), int(month), int(day), int(hour), int(minute), int(second))
-        time_ = '{}:{}:{}'.format(hour, minute, second)
+        strList = dtStr.split()
+        if len(strList) == 1:  # 如果只有日期
+            datetime_ = strToDate(strList[0])
+            date_ = rmDateDash(strList[0])
+            time_ = '00:00:00'
+        else:  # 如果有日期和时间
+            date_, time_ = strList
+            if '-' in date_:
+                date_ = rmDateDash(date_)
+            if ':' in time_:
+                time_ = ''.join(time_.split(':'))
+            year, month, day, = date_[0:4], date_[4:6], date_[6:]
+            hour, minute, second = time_[0:2], time_[2:4], time_[4:]
+            datetime_ = datetime(int(year), int(month), int(day), int(hour), int(minute), int(second))
+            time_ = '{}:{}:{}'.format(hour, minute, second)
         return datetime_, date_, time_
 
-    def isCsvDataExistedDB(self, filename):
+    def isCsvBarInDB(self, filename):
         """
-        判断文件内数据是否已在数据库存在。
+        判断1分钟数据文件的数据是否已在数据库存在。
         :return:
         """
         raise NotImplementedError
@@ -316,9 +341,9 @@ class RQDataConverter(FormatConverter):
     def __init__(self, adaptor):
         super(RQDataConverter, self).__init__(adaptor)
         self.vendor = VENDOR_RQ
-        self.lastTradeDate = None   # 只是用来输出日志
+        self.lastTradeDate = None  # 只是用来输出日志
 
-    def isCsvDataExistedDB(self, filename):
+    def isCsvBarInDB(self, filename):
         pass
 
     def convertToVnpyBar(self, sourceDict):
@@ -377,7 +402,7 @@ class JaqsDataConverter(FormatConverter):
         symbol, beginDate, beginTime, _to, endDate, endTime, _ext = re.split(pattern, filename)
         return symbol, beginDate, beginTime, endDate, endTime
 
-    def isCsvDataExistedDB(self, filename):
+    def isCsvBarInDB(self, filename):
         """
         通过csv文件名，判断该月的数据文件是否在数据库已存在，如果是当月的文件则强制重新写入。
         ----------------------------------------------------------------------------------------------------------------
@@ -402,7 +427,7 @@ class JaqsDataConverter(FormatConverter):
         :return: list[string].
                 日期Format '%Y%m%d'
         """
-        collection = self._adaptor.getCollection(colName)
+        collection = self._adaptor.getDb(colName)
         cursor = collection.find(projection={'date': True, '_id': False})
         dateList = [doc['date'] for doc in cursor]
         return set(dateList)
@@ -463,14 +488,14 @@ class JQDataConverter(FormatConverter):
         :return:
         """
         dateRange = self.getMonthBusinessDay(year, month)
-        collection = self._adaptor.getCollection(colName)
+        collection = self._adaptor.getDb(colName)
         for date in dateRange:
             date = date.replace(hour=9, minute=10)
             if collection.find_one({'datetime': date}):
                 return True
         return False  # 遍历结束后没返回结果，则返回false
 
-    def isCsvDataExistedDB(self, filename):
+    def isCsvBarInDB(self, filename):
         """
         通过csv文件名，判断该月的数据文件是否在数据库已存在，如果是当月的文件则强制重新写入。
         ----------------------------------------------------------------------------------------------------------------
@@ -478,13 +503,26 @@ class JQDataConverter(FormatConverter):
                 csv文件名
         :return: bool
         """
+        if self.isCurrentMonthCsvBar(filename):  # 当月文件强制返回false
+            return False
+        try:
+            symbol, year, month, _ = self.parseFilename(filename)
+            return self.isMonthExisted(symbol, int(year), int(month))
+        except ValueError:
+            self.error(u'{}:{}'.format(FILE_INVALID_NAME, filename))
+
+    def isCurrentMonthCsvBar(self, filename):
+        """
+        通过csv文件名判断是否当月的1分钟数据。
+        :param filename:
+        :return:
+        """
         today = datetime.today()
         curYear, curMonth = today.year, today.month
         try:
             symbol, year, month, _ = self.parseFilename(filename)
-            if year == curYear and month == curMonth:
-                return False
-            return self.isMonthExisted(symbol, int(year), int(month))
+            if int(year) == curYear and int(month) == curMonth:
+                return True
         except ValueError:
             self.error(u'{}:{}'.format(FILE_INVALID_NAME, filename))
 
@@ -499,6 +537,37 @@ class JQDataConverter(FormatConverter):
         for key in self.GENERAL_KEY:
             bar[key] = float(sourceDict[key])
         bar['openInterest'] = 0.0
-        dtTuple = self.parseDatetime(sourceDict[''])
+        dtTuple = self.parseDatetime(sourceDict['datetime'])
         bar['datetime'], bar['date'], bar['time'] = dtTuple
         return bar
+
+    def rmCurrentMonthBarCsv(self):
+        """
+        删除当月的1分钟数据文件。
+        :return:
+        """
+        path = self.getPricePath(FUTURE, BAR)
+        for root, dirs, files in os.walk(path):
+            if files:
+                files = (file_ for file_ in files if file_.endswith('.csv'))
+                for f in files:
+                    if self.isCurrentMonthCsvBar(f):
+                        fp = os.path.join(root, f)
+                        self.info(u"Delete file: {}".format(fp))
+                        os.remove(fp)
+
+    def rmEmptyBarCsv(self):
+        """
+        删除空的1分钟数据文件
+        :return:
+        """
+        path = self.getPricePath(FUTURE, BAR)
+        for root, dirs, files in os.walk(path):
+            if files:
+                files = (file_ for file_ in files if file_.endswith('.csv'))
+                for f in files:
+                    fp = os.path.join(root, f)
+                    df = pd.read_csv(fp)
+                    if df.empty:
+                        self.info(u"Delete file: {}".format(fp))
+                        # os.remove(fp)

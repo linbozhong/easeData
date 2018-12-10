@@ -11,12 +11,13 @@ from jaqs.data import DataApi
 from os.path import abspath, dirname
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
+from functools import wraps
 
 from const import *
 from text import *
 from base import DataVendor
 from functions import (loadSetting, saveSetting, getParentDir,
-                       rmDateDash, strToDate, dateToStr,
+                       rmDateDash, strToDate, dateToStr, dateToDtStr, getTodayStr
                        )
 from database import MongoDbConnector, VnpyAdaptor
 
@@ -28,6 +29,7 @@ class DataCollector(DataVendor):
 
     def __init__(self):
         super(DataCollector, self).__init__()
+        self._dbAdaptor = None
         self._isConnected = False
         self._sdk = None
         self._unpopularFuture = ['wr', 'fb', 'bb', 'RS', 'RI', 'LR', 'JR', 'WH', 'PM', 'CY', 'TS']
@@ -37,6 +39,14 @@ class DataCollector(DataVendor):
 
     def setUnpopularFuture(self, unpopularList):
         self._unpopularFuture = unpopularList
+
+    def setDbAdaptor(self, adaptor):
+        self._dbAdaptor = adaptor
+
+    def getDbAdaptor(self):
+        if self._dbAdaptor is None:
+            self.setDbAdaptor(VnpyAdaptor())
+        return self._dbAdaptor
 
 
 class JQDataCollector(DataCollector):
@@ -85,7 +95,8 @@ class JQDataCollector(DataCollector):
 
     def _runFunc(self, name):
         """
-        sdk方法装饰器
+        获取sdk方法
+        ----------------------------------------------------------------------------------------------------------------
         :param name: string
                 jqdatasdk的方法名
         :return:
@@ -102,9 +113,27 @@ class JQDataCollector(DataCollector):
 
         return wrapper
 
+    # def dataChecker(self, func):
+    #     """
+    #     检查获取的数据的装饰器
+    #     :param func:
+    #     :return:
+    #     """
+    #     @wraps(func)
+    #     def wrapper(*args, **kwargs):
+    #         try:
+    #             df = func(*args, **kwargs)
+    #             if df is not None and not df.empty:
+    #                 return df
+    #         except Exception as e:
+    #             msg = u"{}:{}".format(ERROR_UNKNOWN, e.message.decode('gb2312'))
+    #             self.error(msg)
+    #     return wrapper
+
     def _initDailyCount(self):
         """
         初始化数据库。因为jqdata免费版有每日100万条记录的限制，这里用数据库来记录每日已使用的数据量。
+        ----------------------------------------------------------------------------------------------------------------
         :return:
         """
         client = MongoDbConnector().connect()
@@ -120,6 +149,7 @@ class JQDataCollector(DataCollector):
     def _syncDailyCount(self):
         """
         同步数据库中本日已使用的数据量。
+        ----------------------------------------------------------------------------------------------------------------
         :return:
         """
         flt = {'date': self.today}
@@ -134,6 +164,7 @@ class JQDataCollector(DataCollector):
     def _addDailyCount(self, num):
         """
         把本次使用的数据量和本日已使用的数据量累加。
+        ----------------------------------------------------------------------------------------------------------------
         :param num: int
                     本次获取的数据条数
         :return:
@@ -145,6 +176,7 @@ class JQDataCollector(DataCollector):
     def _getFutureBasic(self, date=None):
         """
         获取期货品种基本数据。
+        ----------------------------------------------------------------------------------------------------------------
         :return:
         """
         if date is None:
@@ -163,6 +195,7 @@ class JQDataCollector(DataCollector):
         """
         输入年份和月份，得到月份的开始日期和结束日期，用于查询行情。
         开始日期从2005年开始，如果结束日期于或大于当前日期，结束日期就是当前日期。
+        ----------------------------------------------------------------------------------------------------------------
         :param year: int
                 年份，从2005年开始
         :param month: int
@@ -185,6 +218,7 @@ class JQDataCollector(DataCollector):
     def connectApi(self, user=None, token=None, address=None):
         """
         进行JQData的用户认证
+        ----------------------------------------------------------------------------------------------------------------
         :param user: string
                 聚宽用户名
         :param token: string
@@ -214,6 +248,7 @@ class JQDataCollector(DataCollector):
     def convertFutureSymbol(self, symbol):
         """
         把普通期货合约代码转换为jqdata规则的代码，并做缓存。
+        ----------------------------------------------------------------------------------------------------------------
         :param symbol: string
                 普通期货合约代码
         :return: string
@@ -231,6 +266,7 @@ class JQDataCollector(DataCollector):
     def getFutureExchangeMap(self):
         """
         获取期货品种对应jqdata交易所代码的字典。
+        ----------------------------------------------------------------------------------------------------------------
         :return: dict
             字典示例数据：{'Y': 'XDCE', 'FU': 'XSGE', ...}
         """
@@ -241,6 +277,7 @@ class JQDataCollector(DataCollector):
     def getDominantContinuousSymbolMap(self):
         """
         获取期货品种对应jqdata主力连续合约代码的字典。
+        ----------------------------------------------------------------------------------------------------------------
         :return: dict
             字典示例数据：{'Y': 'Y9999.XDCE', 'FU': 'FU9999.XSGE', ...}
         """
@@ -251,6 +288,7 @@ class JQDataCollector(DataCollector):
     def getPopularFuture(self, unpopular=None):
         """
         获取当前热门的期货合约品种。
+        ----------------------------------------------------------------------------------------------------------------
         :param unpopular: iterable container
                 冷门的期货品种，用于被排除
         :return: list
@@ -270,9 +308,58 @@ class JQDataCollector(DataCollector):
                 varieties.append(variety)
         return [variety for variety in varieties if variety not in unpopular]
 
-    def getContinuousBarByMonth(self, symbol, year, month, overwrite=False):
+    def downloadContinuousDaily(self, symbol, **kwargs):
+        """
+        下载期货主力连续合约的日线数据。
+        ----------------------------------------------------------------------------------------------------------------
+        :param symbol: string
+                期货合约
+        :param kwargs:
+        :return:
+        """
+        filename = u'{}.csv'.format(symbol)
+        path = os.path.join(self.getPricePath(FUTURE, DAILY, symbol), filename)
+        jqSymbol = self.convertFutureSymbol(symbol)
+        start = strToDate('2005-01-01')
+        end = self.today
+
+        if not os.path.exists(path):
+            try:
+                df = self.get_price(jqSymbol, start_date=start, end_date=end, **kwargs)
+                if not df.empty:
+                    df.dropna(inplace=True)
+                    df.to_csv(path, encoding='utf-8-sig')
+                    self.info(u'{}:{}'.format(FILE_DOWNLOAD_SUCCEED, filename))
+                else:
+                    self.info(u'{}:{}'.format(DATA_IS_NONE, filename))
+            except Exception as e:
+                msg = u"{}:{}".format(ERROR_UNKNOWN, e.message.decode('gb2312'))
+                self.error(msg)
+        else:
+            df_file = pd.read_csv(path, encoding='utf-8-sig', index_col=0, parse_dates=True)
+            lastDate = df_file.index[-1].to_pydatetime()
+            if lastDate == end:
+                self.info(u'{}:{}'.format(FILE_IS_NEWEST, symbol))
+                return
+            start = lastDate + timedelta(days=1)
+            df_inc = self.get_price(jqSymbol, start_date=start, end_date=end)
+            if not df_inc.empty:
+                df_inc.dropna(inplace=True)
+                df_new = pd.concat([df_file, df_inc])
+                df_new.to_csv(path, encoding='utf-8-sig')
+                self.info(u'{}:{}'.format(FILE_UPDATE_SUCCEED, symbol))
+            else:
+                self.info(u'{}:{}'.format(DATA_IS_NONE, symbol))
+
+    def downloadAllContinuousDaily(self, **kwargs):
+        for variety in self.getPopularFuture():
+            variety += '9999'
+            self.downloadContinuousDaily(variety, **kwargs)
+
+    def downloadContinuousBarByMonth(self, symbol, year, month, overwrite=False, skipThisMonth=False):
         """
         按月获取单个期货品种的主力连续1分钟线数据。不包含运行当天的数据。
+        ----------------------------------------------------------------------------------------------------------------
         :param symbol: string
                 期货合约代码
         :param year: int
@@ -281,19 +368,32 @@ class JQDataCollector(DataCollector):
                 月份
         :param overwrite: bool
                 是否覆盖本地已经存在的csv文件
+        :param skipThisMonth: bool
+                是否忽略本月份数据（在当月运行无法获取完整的当月数据，所以该选项可以设置不下载本月数据，防止出现没有完整数据的文件）
         :return:
         """
+        if skipThisMonth:
+            curYear, curMonth = self.today.year, self.today.month
+            if year == curYear and month == curMonth:
+                self.info(JQ_IGNORE_THIS_MONTH)
+                return
+
         filename = u'{}_{:0>4d}_{:0>2d}.csv'.format(symbol, year, month)
         path = os.path.join(self.getPricePath(FUTURE, BAR, symbol), filename)
         if not overwrite:
             if os.path.exists(path):
                 self.info(u'{}:{}'.format(FILE_IS_EXISTED, filename))
                 return
+
         jqSymbol = self.convertFutureSymbol(symbol)
         begin, end = self._monthToRange(year, month)
+        # jq查询是包含首尾数据的，结束要减去1分钟，防止上期所金属类包含下个月第一条记录。
+        end = end - timedelta(minutes=1)
         try:
             df = self.get_price(jqSymbol, start_date=begin, end_date=end, frequency='1m')
             if not df.empty:
+                df.dropna(inplace=True)
+                df.index.name = 'datetime'
                 df.to_csv(path, encoding='utf-8-sig')
                 self.info(u'{}:{}'.format(FILE_DOWNLOAD_SUCCEED, filename))
             else:
@@ -302,22 +402,28 @@ class JQDataCollector(DataCollector):
             msg = u"{}:{}".format(ERROR_UNKNOWN, e.message.decode('gb2312'))
             self.error(msg)
 
-    def getAllContinuousBarByMonth(self, year, month, **kwargs):
+    def downloadAllContinuousBarByMonth(self, year, month, varieties=None, **kwargs):
         """
-        按月获取所有活跃的期货品种的主力连续1分钟数据。
+        按月下载所有活跃的期货品种的主力连续1分钟数据。
+        ----------------------------------------------------------------------------------------------------------------
         :param year: int
                 年份，从2005年开始
         :param month: int
                 月份
+        :param varieties: list
+                指定要下载的期货品种
         :return:
         """
-        for variety in self.getPopularFuture():
+        if varieties is None:
+            varieties = self.getPopularFuture()
+        for variety in varieties:
             variety += '9999'
-            self.getContinuousBarByMonth(variety, year, month, **kwargs)
+            self.downloadContinuousBarByMonth(variety, year, month, **kwargs)
 
-    def getAllContinuousBarByRange(self, start, end, **kwargs):
+    def downloadAllContinuousBarByRange(self, start, end, **kwargs):
         """
-        按时间范围获取所有活跃的期货品种的主力连续1分钟数据，开始日期和结束日期的月份都包含在内
+        按时间范围下载所有活跃的期货品种的主力连续1分钟数据，开始日期和结束日期的月份都包含在内。
+        ----------------------------------------------------------------------------------------------------------------
         :param start: str or datetime-like
                 开始日期
         :param end: str or datetime-like
@@ -326,12 +432,13 @@ class JQDataCollector(DataCollector):
         """
         dateRange = pd.date_range(start, end, freq='MS')
         for date in dateRange:
-            self.getAllContinuousBarByMonth(date.year, date.month, **kwargs)
+            self.downloadAllContinuousBarByMonth(date.year, date.month, **kwargs)
 
-    def updateContinuousBar(self, symbol):
+    def updateCsvContinuousBar(self, symbol):
         """
         对单个期货品种的主力连续合约的1分钟数据（当前月份的数据）进行增量更新。
         虽然可以更新到最新时间的数据，但是考虑到主力连续合约的数据主要用于研究，而不是交易，因此增量更新到当日白天收盘后的数据，可以节约资源。
+        ----------------------------------------------------------------------------------------------------------------
         :param symbol: string
                 期货合约代码
         :return:
@@ -340,7 +447,7 @@ class JQDataCollector(DataCollector):
         filename = u'{}_{:0>4d}_{:0>2d}.csv'.format(symbol, curYear, curMonth)
         path = os.path.join(self.getPricePath(FUTURE, BAR, symbol), filename)
         if not os.path.exists(path):
-            self.getContinuousBarByMonth(symbol, curYear, curMonth)  # 不存在本月文件直接下载。
+            self.downloadContinuousBarByMonth(symbol, curYear, curMonth)  # 不存在本月文件直接下载。
         else:
             df_file = pd.read_csv(path, encoding='utf-8-sig', index_col=0, parse_dates=True)
             try:
@@ -364,14 +471,73 @@ class JQDataCollector(DataCollector):
                     self.info(u'{}:{}'.format(DATA_IS_NONE, symbol))
                     # 存在一个问题，最后一天的夜盘数据这个方法是没办法更新的，后面再解决。
 
-    def updateAllContinuousBar(self):
+    def updateAllCsvContinuousBar(self):
         """
         对所有活跃期货品种的主力连续合约的1分钟数据（当前月份的数据）进行增量更新。
+        ----------------------------------------------------------------------------------------------------------------
         :return:
         """
         for variety in self.getPopularFuture():
             variety += '9999'
-            self.updateContinuousBar(variety)
+            self.updateCsvContinuousBar(variety)
+
+    def updateDb(self, freq, symbol=None):
+        """
+        更新单个合约的日线或1分钟线价格序列。
+        ----------------------------------------------------------------------------------------------------------------
+        :param freq: string
+                时间周期，‘bar’或‘daily’
+        :param symbol: string
+                期货合约代码或股票代码
+        :return:
+        """
+        adaptor = self.getDbAdaptor()
+        adaptor.setFreq(freq)
+        adaptor.setActiveConverter(self.vendor + 'Converter')
+        col = adaptor.getCollection(symbol)
+        cursor = col.find().sort('datetime', pymongo.DESCENDING).limit(1)
+        lastTime = list(cursor)[0]['datetime']
+
+        if freq == DAILY:
+            start = lastTime + timedelta(days=1)
+            end = self.today - timedelta(days=1)
+            queryFreq = 'daily'
+        else:
+            start = lastTime + timedelta(minutes=1)
+            end = self.today.replace(hour=15)
+            queryFreq = '1m'
+
+        df = self.get_price(self.convertFutureSymbol(symbol), start_date=start, end_date=end, frequency=queryFreq)
+        df.dropna(inplace=True)
+        df['datetime'] = df.index
+        df['datetime'] = df['datetime'].map(dateToDtStr)
+
+        adaptor.dfToDb(df, symbol)
+        self.info(u'{}:{}:{}'.format(DB_UPDATE_COMPLETE, freq, symbol))
+
+    def updateAllDb(self, freq, symbols=None, exclude=None):
+        """
+        更新多个合约的数据库数据。
+        ----------------------------------------------------------------------------------------------------------------
+        :param freq: string
+                时间周期，‘bar’或‘daily’
+        :param symbols: iterable
+                代码集合
+        :param exclude: iterable
+                排除的代码集合
+        :return:
+        """
+        adaptor = self.getDbAdaptor()
+        adaptor.setFreq(freq)
+        cols = adaptor.getDb().collection_names()
+        if symbols is not None:
+            symbols = [symbol for symbol in symbols if symbol in cols]
+        else:
+            symbols = cols
+        for symbol in symbols:
+            if exclude and symbol in exclude:
+                continue
+            self.updateDb(freq, symbol)
 
 
 class RQDataCollector(DataCollector):
@@ -463,7 +629,7 @@ class RQDataCollector(DataCollector):
     def getCurrentMainContract(self, filePath=None):
         """
         从json文件得到期货品种当前主力合约代码的数据（有序字典）。需要先从米筐的研究模块下载所需的数据，需要定期更新。
-        --------------------------------------------------------------------------------------------------------------------
+        ----------------------------------------------------------------------------------------------------------------
         :param filePath: string
                 json文件路径
         :return: OrderedDict {string: string}

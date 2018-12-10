@@ -143,7 +143,8 @@ def addDateDash(date):
 
 def getTodayStr():
     """
-    获取当天的日期（字符串格式）
+    获取当天的日期（字符串格式）。
+    --------------------------------------------------------------------------------------------------------------------
     :return: string.
             日期格式 %Y-%m-%d
     """
@@ -174,3 +175,14 @@ def dateToStr(date):
             日期格式 %Y-%m-%d
     """
     return '{:0>4d}-{:>02d}-{:>02d}'.format(date.year, date.month, date.day)
+
+
+def dateToDtStr(date):
+    """
+    datetime转换为带时间的字符串。
+    --------------------------------------------------------------------------------------------------------------------
+    :param date:
+    :return: string
+            日期格式 %Y-%m-%d %H:%M:%S
+    """
+    return datetime.strftime(date, '%Y-%m-%d %H:%M:%S')

@@ -171,7 +171,11 @@ class DataVendor(LoggerWrapper):
         root = self.getPriceDataPath()
         if symbol is not None:
             if types == FUTURE:
-                path = os.path.join(root, types, freq, self.getUnderlyingSymbol(symbol), symbol)
+                if freq == DAILY:
+                    # 日线数据少，不需要为每个合约单独建一个文件夹
+                    path = os.path.join(root, types, freq, self.getUnderlyingSymbol(symbol))
+                else:
+                    path = os.path.join(root, types, freq, self.getUnderlyingSymbol(symbol), symbol)
             else:
                 path = os.path.join(root, types, freq, symbol)
         else:

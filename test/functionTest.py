@@ -3,6 +3,7 @@
 import os
 import unittest
 from collections import OrderedDict
+from datetime import datetime
 
 import easeData.functions as fn
 from easeData.const import *
@@ -13,6 +14,7 @@ class TestFunction(unittest.TestCase):
         self.setTestData()
 
     def setTestData(self):
+        self.dt = datetime.today()
         self.dateWithDash = '2018-01-01'
         self.dateWithoutDash = '20180201'
         self.settingFilename = 'setting_test.json'
@@ -61,6 +63,8 @@ class TestFunction(unittest.TestCase):
         print('strToDate 1: {}'.format(fn.strToDate(self.dateWithDash)))
         print('strToDate 2: {}'.format(fn.strToDate(self.dateWithoutDash)))
         print(fn.strToDate('2018-04-20'))
+        print(fn.dateToStr(self.dt))
+        print(fn.dateToDtStr(self.dt))
 
 
 if __name__ == '__main__':

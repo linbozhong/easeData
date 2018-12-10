@@ -79,26 +79,52 @@ class TestJQDataCollector(unittest.TestCase):
         print(df.iloc[0])
         print(df.iloc[-1])
 
+    def testDownloadContinuousDaily(self):
+        self.obj.downloadContinuousDaily('cu9999')
+
+    def testDownloadAllContinuousDaily(self):
+        self.obj.downloadAllContinuousDaily()
+
     def testGetContinuousBarByMonth(self):
-        self.obj.getContinuousBarByMonth('rb9999', 2018, 11)
-        self.obj.getContinuousBarByMonth('cu9999', 2018, 11)
-        self.obj.getContinuousBarByMonth('rb9999', 2018, 11, True)
+        self.obj.downloadContinuousBarByMonth('rb9999', 2018, 11)
+        # self.obj.downloadContinuousBarByMonth('cu9999', 2018, 11, overwrite=True)
+        self.obj.downloadContinuousBarByMonth('AP9999', 2017, 11)
+        self.obj.downloadContinuousBarByMonth('sc9999', 2018, 3)
+        self.obj.downloadContinuousBarByMonth('sc9999', 2018, 2)
+        self.obj.downloadContinuousBarByMonth('sc9999', 2018, 1)
+        self.obj.downloadContinuousBarByMonth('sp9999', 2018, 11, overwrite=True)
+        # self.obj.downloadContinuousBarByMonth('hc9999', 2018, 11, overwrite=True)
+        # self.obj.downloadContinuousBarByMonth('sp9999', 2018, 11, overwrite=True)
+        # self.obj.downloadContinuousBarByMonth('cu9999', 2018, 12, skipThisMonth=True)
+        # self.obj.downloadContinuousBarByMonth('rb9999', 2018, 11, True)
 
     def testGetAllContinuousBarByMonth(self):
-        self.obj.getAllContinuousBarByMonth(2018, 10)
-        # self.obj.getAllContinuousBarByMonth(2018, 11, overwrite=True)
+        # self.obj.downloadAllContinuousBarByMonth(2018, 10)
+        self.obj.downloadAllContinuousBarByMonth(2018, 11, overwrite=True)
 
     def testGetAllContinuousBarByRange(self):
-        self.obj.getAllContinuousBarByRange('2018-01-01', '2018-11-01')
-        self.obj.getAllContinuousBarByRange('2017-11-01', '2017-12-01')
-        # self.obj.getAllContinuousBarByRange('2018-11-01', '2018-11-29', overwrite=True)
+        # varieties = ['cu', 'al', 'sc']
+        # self.obj.downloadAllContinuousBarByRange('2018-01-01', '2018-11-01', varieties=varieties)
+
+        self.obj.downloadAllContinuousBarByRange('2018-01-01', '2018-12-01', skipThisMonth=True)
+        # self.obj.downloadAllContinuousBarByRange('2016-01-01', '2016-12-01')
 
     def testUpdateContinuousBar(self):
-        self.obj.updateContinuousBar('rb9999')
-        self.obj.updateContinuousBar('cu9999')
+        self.obj.updateCsvContinuousBar('rb9999')
+        self.obj.updateCsvContinuousBar('cu9999')
 
     def testUpdateAllContinuousBar(self):
-        self.obj.updateAllContinuousBar()
+        self.obj.updateAllCsvContinuousBar()
+
+    def testUpdateDb(self):
+        self.obj.updateDb('daily', 'ru9999')
+        self.obj.updateDb('bar', 'ru9999')
+
+    def testUpdateAllDb(self):
+        # self.obj.updateAllDb('daily', ['cu9999', 'a9999', 'AP9999'])
+        # self.obj.updateAllDb('bar', ['cu9999', 'a9999', 'AP9999'])
+        self.obj.updateAllDb('daily')
+        self.obj.updateAllDb('bar', exclude=['rb88'])
 
 
 class TestRQDataCollector(unittest.TestCase):

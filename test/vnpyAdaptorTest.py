@@ -9,7 +9,7 @@ vnpyAdaptor = VnpyAdaptor()
 
 vnpyAdaptor.setFreq('bar')
 vnpyAdaptor.setActiveConverter('JQDataConverter')
-vnpyAdaptor.setTargetPath('future', 'a9999')
+vnpyAdaptor.setTargetPath('future', 'sp9999')
 
 csvLoader = vnpyAdaptor.csvLoader
 
@@ -46,6 +46,7 @@ class TestVnpyAdaptor(unittest.TestCase):
         print(converter.parseDatetime('2018-09-20 21:08:48'))
         print(converter.parseDatetime('20180920 210848'))
         print(converter.parseDatetime('2018-09-20 210848'))
+        print(converter.parseDatetime('2018-09-20'))
 
     def testJQDataIsFileExisted(self):
         self.obj.setActiveConverter('JQDataConverter')
@@ -54,10 +55,24 @@ class TestVnpyAdaptor(unittest.TestCase):
             print('{}:{}'.format(i, converter.isMonthExisted('a9999', 2018, i)))
 
         filename = '{}_{}_{}.csv'.format('a9999', datetime.today().year, datetime.today().month)
-        print('{}:{}'.format(filename, converter.isCsvDataExistedDB(filename)))
+        print('is current month:{}'.format(converter.isCurrentMonthCsvBar(filename)))
+        print('{}:{}'.format(filename, converter.isCsvBarInDB(filename)))
 
-    def testJqDataFilesToDb(self):
+    def testJQDataRmCurrentMonthBar(self):
         self.obj.setActiveConverter('JQDataConverter')
+        converter = self.obj.activeConverter
+        # converter.rmCurrentMonthBarCsv()
+        converter.rmEmptyBarCsv()
+
+    def testJqDataBarFilesToDb(self):
+        self.obj.setActiveConverter('JQDataConverter')
+        vnpyAdaptor.setTargetPath('future')
+        self.obj.filesToDb()
+
+    def testJQDataDailyFilesToDb(self):
+        self.obj.setActiveConverter('JQDataConverter')
+        self.obj.setFreq('daily')
+        self.obj.setTargetPath('future')
         self.obj.filesToDb()
 
     def testJaqsDataIsFileExisted(self):
@@ -66,7 +81,7 @@ class TestVnpyAdaptor(unittest.TestCase):
         print(converter.getDbExistedDataDay('rb1905'))
 
         filename = 'rb1905_20181123-210100_to_20181126-150000.csv'
-        print(converter.isCsvDataExistedDB(filename))
+        print(converter.isCsvBarInDB(filename))
 
     def testJaqsFilesToDb(self):
         self.obj.setActiveConverter('JaqsDataConverter')
