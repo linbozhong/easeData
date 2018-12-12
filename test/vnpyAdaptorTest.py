@@ -64,8 +64,9 @@ class TestVnpyAdaptor(unittest.TestCase):
         # converter.rmCurrentMonthBarCsv()
         converter.rmEmptyBarCsv()
 
-    def testJqDataBarFilesToDb(self):
+    def testJQDataBarFilesToDb(self):
         self.obj.setActiveConverter('JQDataConverter')
+        # vnpyAdaptor.setTargetPath('future', 'rb9999')
         vnpyAdaptor.setTargetPath('future')
         self.obj.filesToDb()
 

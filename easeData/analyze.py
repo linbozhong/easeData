@@ -198,7 +198,7 @@ class CorrelationAnalyzer(LoggerWrapper):
         :return: DataFrame
         """
         filename = '{}-{}.csv'.format(start.strftime('%Y%m%d %H%M%S'), end.strftime('%Y%m%d %H%M%S'))
-        self.info('{} Getting price: {}'.format(self.freq, filename))
+        self.info(u'{} Getting price: {}'.format(self.freq, filename))
 
         if collections is None:
             collections = self.targetCollection
@@ -220,7 +220,7 @@ class CorrelationAnalyzer(LoggerWrapper):
         df = pd.DataFrame(allPrices)
         if self.freq == DAILY:
             df.dropna(axis=1, inplace=True)  # 剔除日线数据不完整的合约，如新上市合约等
-        df.to_csv(os.path.join(getTestPath(filename)))
+        # df.to_csv(os.path.join(getTestPath(filename)))
         return df
 
     def getCorrelationArray(self):

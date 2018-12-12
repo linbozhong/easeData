@@ -106,7 +106,7 @@ class TestJQDataCollector(unittest.TestCase):
         # varieties = ['cu', 'al', 'sc']
         # self.obj.downloadAllContinuousBarByRange('2018-01-01', '2018-11-01', varieties=varieties)
 
-        self.obj.downloadAllContinuousBarByRange('2018-01-01', '2018-12-01', skipThisMonth=True)
+        self.obj.downloadAllContinuousBarByRange('2005-01-01', '2006-12-01', skipThisMonth=True)
         # self.obj.downloadAllContinuousBarByRange('2016-01-01', '2016-12-01')
 
     def testUpdateContinuousBar(self):

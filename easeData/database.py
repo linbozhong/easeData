@@ -427,7 +427,7 @@ class JaqsDataConverter(FormatConverter):
         :return: list[string].
                 日期Format '%Y%m%d'
         """
-        collection = self._adaptor.getDb(colName)
+        collection = self._adaptor.getCollection(colName)
         cursor = collection.find(projection={'date': True, '_id': False})
         dateList = [doc['date'] for doc in cursor]
         return set(dateList)
@@ -488,7 +488,7 @@ class JQDataConverter(FormatConverter):
         :return:
         """
         dateRange = self.getMonthBusinessDay(year, month)
-        collection = self._adaptor.getDb(colName)
+        collection = self._adaptor.getCollection(colName)
         for date in dateRange:
             date = date.replace(hour=9, minute=10)
             if collection.find_one({'datetime': date}):

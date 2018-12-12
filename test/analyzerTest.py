@@ -48,19 +48,19 @@ class TestCorrAnalyzer(unittest.TestCase):
         self.obj.getCorrelationArray()
 
     def testPlotCorrelationArray(self):
-        # self.obj.setFreq('bar')
-        # self.obj.setNum(12)
-        # self.obj.setEndDay('2018-11-30')
-        # self.obj.setExclude(self.obj.cffex)
-        # df = self.obj.getCorrelationArray()
-        # self.obj.plotCorrelationArray(df)
-
-        self.obj.setFreq('daily')
-        self.obj.setNum(12)
+        self.obj.setFreq('bar')
+        self.obj.setNum(30)
         self.obj.setEndDay('2018-12-10')
-        self.obj.setExclude(['AP', 'fu', 'sc'])
+        self.obj.setExclude(self.obj.cffex)
         df = self.obj.getCorrelationArray()
         self.obj.plotCorrelationArray(df)
+
+        # self.obj.setFreq('daily')
+        # self.obj.setNum(12)
+        # self.obj.setEndDay('2018-12-10')
+        # self.obj.setExclude(['AP', 'fu', 'sc'])
+        # df = self.obj.getCorrelationArray()
+        # self.obj.plotCorrelationArray(df)
 
 
 if __name__ == '__main__':
