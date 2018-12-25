@@ -1,5 +1,8 @@
 # coding:utf-8
 
+# 基础数据
+BASIC = 'basic'
+
 # 数据周期
 DAILY = 'daily'
 BAR = 'bar'
@@ -9,6 +12,7 @@ TICK = 'tick'
 FUTURE = 'future'
 STOCK = 'stock'
 FUND = 'fund'
+OPTION = 'option'
 
 # 数据供应商
 VENDOR_BASE = 'BaseVendor'

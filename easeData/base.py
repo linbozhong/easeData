@@ -157,6 +157,19 @@ class DataVendor(LoggerWrapper):
             os.makedirs(self.priceDp)
         return self.priceDp
 
+    def getBasicPath(self, types):
+        """
+        获取基础数据文件目录，不存在则创建。
+        :param types: string
+                可选'future', 'stock', 'option'
+        :return:
+        """
+        root = self.getBasicDataPath()
+        path = os.path.join(root, types)
+        if not os.path.exists(path):
+            os.makedirs(path)
+        return path
+
     def getPricePath(self, types, freq, symbol=None):
         """
         获取价格csv文件的目录，如果不存在则创建该目录。

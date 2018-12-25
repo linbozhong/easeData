@@ -6,6 +6,7 @@ import jqdatasdk
 import pymongo
 import pandas as pd
 import numpy as np
+from jqdatasdk import opt, query
 from collections import OrderedDict
 from jaqs.data import DataApi
 from os.path import abspath, dirname
@@ -90,6 +91,7 @@ class JQDataCollector(DataCollector):
 
         # 代理访问sdk的方法
         jqGetMethod = [i for i in self._sdk.__dict__ if i.startswith('get_')]
+        jqGetMethod.append('run_query')
         if name in jqGetMethod:
             return self._runFunc(name)
 
@@ -104,7 +106,10 @@ class JQDataCollector(DataCollector):
 
         def wrapper(*args, **kwargs):
             if self._isConnected:
-                func = getattr(self._sdk, name)
+                if name == 'run_query':
+                    func = getattr(self._sdk.opt, name)
+                else:
+                    func = getattr(self._sdk, name)
                 df = func(*args, **kwargs)
                 self._addDailyCount(len(df))
                 return df
@@ -433,6 +438,99 @@ class JQDataCollector(DataCollector):
         dateRange = pd.date_range(start, end, freq='MS')
         for date in dateRange:
             self.downloadAllContinuousBarByMonth(date.year, date.month, **kwargs)
+
+    def downloadOptionData(self, type):
+        """
+        下载期权基础数据。
+        :return:
+        """
+
+        if type == BASIC:
+            filename = u'{}_{}.csv'.format(OPTION, BASIC)
+            path = os.path.join(self.getBasicPath(OPTION), filename)
+            dataDb = opt.OPT_CONTRACT_INFO
+        elif type == DAILY:
+            filename = u'{}_{}.csv'.format(OPTION, DAILY)
+            path = os.path.join(self.getPricePath(OPTION, DAILY), filename)
+            dataDb = opt.OPT_DAILY_PRICE
+        else:
+            return
+
+        if not os.path.exists(path):
+            try:
+                q = query(dataDb)
+                df = self.run_query(q)
+                if not df.empty:
+                    df.to_csv(path, encoding='utf-8-sig')
+                    self.info(u'{}:{}'.format(FILE_DOWNLOAD_SUCCEED, filename))
+                else:
+                    self.info(u'{}:{}'.format(DATA_IS_NONE, filename))
+            except Exception as e:
+                msg = u"{}:{}".format(ERROR_UNKNOWN, e.message.decode('gb2312'))
+                self.error(msg)
+        else:
+            df_file = pd.read_csv(path, encoding='utf-8-sig', index_col=0, parse_dates=True)
+            lastID = int(df_file['id'].iloc[-1])  # 源格式是numpy.int64要转成普通int
+            q = query(dataDb).filter(dataDb.id > lastID)
+            df_inc = self.run_query(q)
+            if not df_inc.empty:
+                df_new = pd.concat([df_file, df_inc])
+                df_new.to_csv(path, encoding='utf-8-sig')
+                self.info(u'{}:{}'.format(FILE_UPDATE_SUCCEED, filename))
+            else:
+                self.info(u'{}:{}'.format(DATA_IS_NONE, filename))
+
+    # def incrementalDownload(self, path):
+    #     if not os.path.exists(path):
+    #         try:
+    #             df = getdatafuncname(q)
+    #             if not df.empty:
+    #                 df.to_csv(path, encoding='utf-8-sig')
+    #                 self.info(u'{}:{}'.format(FILE_DOWNLOAD_SUCCEED, os.path.basename(path)))
+    #             else:
+    #                 self.info(u'{}:{}'.format(DATA_IS_NONE, os.path.basename(path)))
+    #         except Exception as e:
+    #             msg = u"{}:{}".format(ERROR_UNKNOWN, e.message.decode('gb2312'))
+    #             self.error(msg)
+    #     else:
+    #         df_file = pd.read_csv(path, encoding='utf-8-sig', index_col=0, parse_dates=True)
+    #         lastID = int(df_file['id'].iloc[-1])  # 源格式是numpy.int64要转成普通int
+    #         q = query(opt.OPT_CONTRACT_INFO).filter(opt.OPT_CONTRACT_INFO.id > lastID)
+    #         df_inc = self.run_query(q)
+    #         if not df_inc.empty:
+    #             df_new = pd.concat([df_file, df_inc])
+    #             df_new.to_csv(path, encoding='utf-8-sig')
+    #             self.info(u'{}:{}'.format(FILE_UPDATE_SUCCEED, filename))
+    #         else:
+    #             self.info(u'{}:{}'.format(DATA_IS_NONE, filename))
+
+    def downloadOptionDaily(self):
+        filename = u'{}_{}.csv'.format(OPTION, DAILY)
+        path = os.path.join(self.getPricePath(OPTION, DAILY), filename)
+
+        if not os.path.exists(path):
+            try:
+                q = query(opt.OPT_DAILY_PRICE)
+                df = self.run_query(q)
+                if not df.empty:
+                    df.to_csv(path, encoding='utf-8-sig')
+                    self.info(u'{}:{}'.format(FILE_DOWNLOAD_SUCCEED, filename))
+                else:
+                    self.info(u'{}:{}'.format(DATA_IS_NONE, filename))
+            except Exception as e:
+                msg = u"{}:{}".format(ERROR_UNKNOWN, e.message.decode('gb2312'))
+                self.error(msg)
+        else:
+            df_file = pd.read_csv(path, encoding='utf-8-sig', index_col=0, parse_dates=True)
+            lastID = int(df_file['id'].iloc[-1])  # 源格式是numpy.int64要转成普通int
+            q = query(opt.OPT_DAILY_PRICE).filter(opt.OPT_DAILY_PRICE.id > lastID)
+            df_inc = self.run_query(q)
+            if not df_inc.empty:
+                df_new = pd.concat([df_file, df_inc])
+                df_new.to_csv(path, encoding='utf-8-sig')
+                self.info(u'{}:{}'.format(FILE_UPDATE_SUCCEED, filename))
+            else:
+                self.info(u'{}:{}'.format(DATA_IS_NONE, filename))
 
     def updateCsvContinuousBar(self, symbol):
         """
