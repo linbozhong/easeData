@@ -453,6 +453,8 @@ class JQDataCollector(DataCollector):
             filename = u'{}_{}.csv'.format(OPTION, DAILY)
             path = os.path.join(self.getPricePath(OPTION, DAILY), filename)
             dataDb = opt.OPT_DAILY_PRICE
+            # 这个方法在获取日线数据时，随着数据量的增大，增量加数据，会多次加载已有的大文件，导致越到后面操作速度越慢。
+            # 最好还是拆分成月份的表格，然后存入数据库。
         else:
             return
 
