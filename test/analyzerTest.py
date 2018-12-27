@@ -1,10 +1,12 @@
 # coding:utf-8
 
 import unittest
-from easeData.analyze import CorrelationAnalyzer
+from easeData.functions import getTestPath
+from easeData.analyze import CorrelationAnalyzer, PositionDiffPlotter
 from datetime import datetime
 
 corrAnalyzer = CorrelationAnalyzer()
+positionDiffPlotter = PositionDiffPlotter()
 
 
 class TestCorrAnalyzer(unittest.TestCase):
@@ -61,6 +63,45 @@ class TestCorrAnalyzer(unittest.TestCase):
         # self.obj.setExclude(['AP', 'fu', 'sc'])
         # df = self.obj.getCorrelationArray()
         # self.obj.plotCorrelationArray(df)
+
+
+class TestPositionDiffTrend(unittest.TestCase):
+    def setUp(self):
+        self.obj = positionDiffPlotter
+
+    def testGetTradingContractInfo(self):
+        df = self.obj.getTradingContract()
+        print(df)
+
+    def testGetMainContract(self):
+        df = self.obj.getMainContract()
+        df.to_csv(getTestPath('optionMainContract.csv'), encoding='utf-8-sig')
+
+    def testGetDisplayContract(self):
+        df = self.obj.getDisplayContract()
+        df.to_csv(getTestPath('optionDisplayContract.csv'), encoding='utf-8-sig')
+
+    def testGetDailyPrice(self):
+        contract = '10001562.XSHG'
+        df = self.obj.getDailyPrice(contract)
+        df.to_csv(getTestPath('optionPrice.csv'), encoding='utf-8-sig')
+
+    def testGetContractName(self):
+        contract = '10001562.XSHG'
+        print(self.obj.getContractName(contract))
+
+    def testGetMainContractDailyPrice(self):
+        price = self.obj.getMainContractDailyPrice()
+        for code, df in price.items():
+            fp = getTestPath('{}.csv'.format(code))
+            df.to_csv(fp, encoding='utf-8-sig')
+
+    def testGetPosDiff(self):
+        df = self.obj.getPositonDiff()
+        df.to_csv(getTestPath('posDiff.csv'), encoding='utf-8-sig')
+
+    def testPlotPosDiff(self):
+        self.obj.plotPosDiff()
 
 
 if __name__ == '__main__':

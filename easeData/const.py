@@ -7,6 +7,7 @@ BASIC = 'basic'
 DAILY = 'daily'
 BAR = 'bar'
 TICK = 'tick'
+STUDY_DAILY = 'sDaily'
 
 # 市场定义
 FUTURE = 'future'
@@ -70,6 +71,8 @@ FILE_TRADE_CAL = 'trade_cal.csv'
 VNPY_TICK_DB_NAME = 'VnTrader_Tick_Db'
 VNPY_DAILY_DB_NAME = 'VnTrader_Daily_Db'
 VNPY_MINUTE_DB_NAME = 'VnTrader_1Min_Db'
+
+STUDY_DAILY_DB_NAME = 'Study_Daily_Db'
 
 # 转换器名称
 ADAPTOR_VNPY = 'vnpyAdaptor'

@@ -90,6 +90,15 @@ class TestJQDataCollector(unittest.TestCase):
         for i in range(100):
             self.obj.downloadOptionData('daily')
 
+    def testDownloadOptionDailyByDate(self):
+        today = datetime(2018, 12, 26)
+        df = self.obj.downloadOptionDailyByDate(today)
+
+    def testDownloadAllOptionDaily(self):
+        # start = datetime(2018, 9, 1)
+        # self.obj.downloadAllOptionDaily(start)
+        self.obj.downloadAllOptionDaily()
+
 
     def testGetContinuousBarByMonth(self):
         self.obj.downloadContinuousBarByMonth('rb9999', 2018, 11)

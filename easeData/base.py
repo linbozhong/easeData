@@ -174,7 +174,7 @@ class DataVendor(LoggerWrapper):
         """
         获取价格csv文件的目录，如果不存在则创建该目录。
         :param types: string
-                可选'future' 或 'stock'
+                可选'future','stock', 'option'
         :param freq: string
                 可选'daily', 'bar', 'tick'
         :param symbol: string

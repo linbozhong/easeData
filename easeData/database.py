@@ -105,7 +105,7 @@ class VnpyAdaptor(LoggerWrapper):
     DB_NAME_MAP = {
         DAILY: VNPY_DAILY_DB_NAME,
         BAR: VNPY_MINUTE_DB_NAME,
-        TICK: VNPY_TICK_DB_NAME
+        TICK: VNPY_TICK_DB_NAME,
     }
 
     def __init__(self):
@@ -258,6 +258,32 @@ class VnpyAdaptor(LoggerWrapper):
         pass
 
 
+class StudyDBAdaptor(VnpyAdaptor):
+    """
+    研究数据导入模块。
+    """
+    DB_NAME_MAP = {
+        DAILY: STUDY_DAILY_DB_NAME
+    }
+
+    def __init__(self):
+        super(StudyDBAdaptor, self).__init__()
+
+    def filesToDb(self):
+        """
+        把目标路径的csv文件存入mongo数据库
+        ----------------------------------------------------------------------------------------------------------------
+        """
+        start = time.time()
+        print(self.targetPath)
+        dataGenerator = self.csvLoader.loadFiles(self.targetPath)
+        for _, data in dataGenerator:
+            for daily in data:
+                daily = self.activeConverter.convertToStudyOptionDaily(daily)
+                self.saveBarToDb(daily)
+        self.info(u'{}:{}'.format(TIME_CONSUMPTION, time.time() - start))
+
+
 class FormatConverter(DataVendor):
     """
     Vnpy分钟线数据格式转换基类
@@ -315,6 +341,22 @@ class FormatConverter(DataVendor):
         :return: dict
         """
         raise NotImplementedError
+
+    def getDbExistedDataDay(self, colName, dateName='date'):
+        """
+        判断按天保存的数据是否已经写入了数据库。
+        ----------------------------------------------------------------------------------------------------------------
+        :param colName: string
+                集合名，可能是合约代码或资产名称（研究数据），如'rb1810'、'option'
+        :param dateName: string
+                保存日期的字段名，默认'date'
+        :return: list[string].
+                日期Format '%Y%m%d' 或 '%Y-%m-%d'
+        """
+        collection = self._adaptor.getCollection(colName)
+        cursor = collection.find(projection={datetime: True, '_id': False})
+        dateList = [doc[datetime] for doc in cursor]
+        return set(dateList)
 
 
 class RQDataConverter(FormatConverter):
@@ -412,16 +454,17 @@ class JaqsDataConverter(FormatConverter):
         """
         try:
             symbol, _sd, _st, endDate, _et = self.parseBarFilename(filename)
-            existedDays = self.getDbExistedDataDay(symbol)
+            existedDays = self.getDbExistedDataDay(symbol, )
             if endDate in existedDays:
                 return True
         except ValueError:
             self.error(u'{}:{}'.format(FILE_INVALID_NAME, filename))
 
-    def getDbExistedDataDay(self, colName):
+    def getDbExistedDataDay(self, colName, dateName='date'):
         """
         获取某个合约分钟线数据已保存在数据库的交易日列表。适用于Jaqs的collector
         ----------------------------------------------------------------------------------------------------------------
+        :param dateName:
         :param colName: string
                 合约代码，如'rb1810'
         :return: list[string].
@@ -456,7 +499,7 @@ class JQDataConverter(FormatConverter):
     """
     聚宽数据转换接口
     --------------------------------------------------------------------------------------------------------------------
-    CSV原始数据：
+    分钟线CSV原始数据：
     {
         '': '2018-11-12 09:01:00'
         'open': 3829.0,
@@ -467,6 +510,25 @@ class JQDataConverter(FormatConverter):
         'money': 7062675620.0,
      }
 
+    期权日线CSV原始数据：
+    {
+        'id': 1L,
+        'code': '10000003.XSHG',
+        'exchange_code': 'XSHG',
+        'date': '2015-02-09',
+        'pre_settle': 0.1276,
+        'pre_close': 0.1276,
+        'open': 0.1272,
+        'high': 0.1364,
+        'low': 0.1134,
+        'close': 0.1225,
+        'change_pct_close': -3.9969,
+        'settle_price': 0.265,
+        'change_pct_settle': 107.6803,
+        'volume': 1323.0,
+        'money': 1675003.0,
+        'position': 509L
+    }
     """
 
     def __init__(self, adaptor):
@@ -511,6 +573,13 @@ class JQDataConverter(FormatConverter):
         except ValueError:
             self.error(u'{}:{}'.format(FILE_INVALID_NAME, filename))
 
+    def isCsvOptionInDB(self, filename):
+        try:
+            type, freq, year, month, day = self.parseFilename(filename)
+            return self.isMonthExisted(symbol, int(year), int(month))
+        except ValueError:
+            self.error(u'{}:{}'.format(FILE_INVALID_NAME, filename))
+
     def isCurrentMonthCsvBar(self, filename):
         """
         通过csv文件名判断是否当月的1分钟数据。
@@ -540,6 +609,29 @@ class JQDataConverter(FormatConverter):
         dtTuple = self.parseDatetime(sourceDict['datetime'])
         bar['datetime'], bar['date'], bar['time'] = dtTuple
         return bar
+
+    def convertToStudyOptionDaily(self, sourceDict):
+        """
+        把期权日线数据按相应的数据类型存入数据库。
+        :param sourceDict: dict
+        :return:
+        """
+        sDaily = dict()
+        for key in self.GENERAL_KEY:
+            sDaily[key] = float(sourceDict[key])
+        sDaily[id] = int(sourceDict['id'])
+        sDaily['date'] = strToDate(sourceDict['date'])
+        sDaily['code'] = sourceDict['code']
+        sDaily['exchange_code'] = sourceDict['exchange_code']
+        sDaily['pre_settle'] = float(sourceDict['pre_settle'])
+        sDaily['pre_close'] = float(sourceDict['pre_close'])
+        sDaily['change_pct_close'] = float(sourceDict['change_pct_close'])
+        sDaily['settle_price'] = float(sourceDict['settle_price'])
+        sDaily['change_pct_settle'] = float(sourceDict['change_pct_settle'])
+        sDaily['money'] = float(sourceDict['money'])
+        sDaily['position'] = int(sourceDict['money'])
+
+
 
     def rmCurrentMonthBarCsv(self):
         """
@@ -571,3 +663,8 @@ class JQDataConverter(FormatConverter):
                     if df.empty:
                         self.info(u"Delete file: {}".format(fp))
                         # os.remove(fp)
+
+
+if __name__ == '__main__':
+    study = StudyDBAdaptor()
+    print(study.DB_NAME_MAP)

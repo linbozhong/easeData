@@ -9,9 +9,13 @@ import tushare as ts
 from datetime import datetime
 from collections import OrderedDict
 from dateutil.relativedelta import relativedelta
+from jqdatasdk import opt, query
+from pyecharts import Line
+from pyecharts import Page
 
 from database import MongoDbConnector
 from base import LoggerWrapper
+from collector import JQDataCollector
 from functions import (strToDate, dateToStr, getTestPath)
 from const import *
 
@@ -282,7 +286,7 @@ class CorrelationAnalyzer(LoggerWrapper):
         dfMean = grouped.mean()
         corrDict = self.analyzeCorrelation(dfMean)
         for key, corrList in corrDict.iteritems():
-            if not corrList:    # 排除没有与其他任何品种有相关关系的品种
+            if not corrList:  # 排除没有与其他任何品种有相关关系的品种
                 continue
             selList = [item[0] for item in corrList]  # 得到有相关关系品种的名称列表
             varietyDf = groupedDict[key]
@@ -295,16 +299,132 @@ class CorrelationAnalyzer(LoggerWrapper):
             ax.set_title(key)
             ax.set_ylabel('correlation')
             ax.plot([0.5 for i in range(len(selDf))], linestyle='dashed', color='k')  # 绘制0.5的参考线
-            selDf.plot(ax=ax, ylim=[-0.5, 1])   # 0.5以上的负相关基本不存在。
+            selDf.plot(ax=ax, ylim=[-0.5, 1])  # 0.5以上的负相关基本不存在。
             filename = '{}_{}.png'.format(self.freq, key)
             fig.savefig(getTestPath(filename))
 
 
-class PositionDiffTrend(object):
+class PositionDiffPlotter(object):
     """
     期权品种仓差走势图
     """
+
     def __init__(self):
-        pass
+        self.jqsdk = JQDataCollector()
+        self.tradingContractInfo = None
+        self.mainContract = None
+        self.displayContract = None
+        self.contractName = None
+        self.dailyPriceDict = OrderedDict()
+        self.posDiffDict = OrderedDict()
+
+        self.date = datetime(2018, 12, 26)
+        self.queryMonth = '1901'
+        self.queryExercisePrice = [
+            2.1,
+            2.15,
+            2.2,
+            2.25,
+            2.3,
+            2.35,
+            2.4,
+            2.45,
+            2.5
+        ]
+        self.displayExercisePrice = [
+            2.5,
+            2.3,
+            2.35,
+        ]
+
+    @staticmethod
+    def calcPositionDiff(dailyDf):
+        df = dailyDf.set_index('date')
+        df['prePosition'] = df['position'].shift(1)
+        df['positionDiff'] = df['position'] - df['prePosition']
+        df['positionDiff'].fillna(0, inplace=True)
+        return df['positionDiff'].map(int)
+
+    def getTradingContract(self):
+        if self.tradingContractInfo is None:
+            date = self.date
+            exchange = 'XSHG'
+            db = opt.OPT_DAILY_PREOPEN
+            q = query(db).filter(db.exchange_code == exchange, db.date == date)
+            self.tradingContractInfo = self.jqsdk.run_query(q)
+        return self.tradingContractInfo
+
+    def getMainContract(self):
+        if self.mainContract is None:
+            df = self.getTradingContract()
+            filterWord = self.queryMonth + 'M'
+            filterFunc = lambda x: filterWord in x
+            mask1 = df.trading_code.map(filterFunc)
+            mask2 = df.exercise_price.isin(self.queryExercisePrice)
+            df = df[mask1 & mask2]
+            df = df.sort_values(by='name')
+            self.mainContract = df
+        return self.mainContract
+
+    def getContractName(self, contractCode):
+        if self.contractName is None:
+            df = self.getMainContract()
+            df = df.set_index('code')
+            self.contractName = df['name']
+        return self.contractName[contractCode]
+
+    def getDisplayContract(self):
+        if self.displayContract is None:
+            df = self.getMainContract()
+            mask = df.exercise_price.isin(self.displayExercisePrice)
+            self.displayContract = df[mask]
+        return self.displayContract
+
+    def getDailyPrice(self, contract):
+        db = opt.OPT_DAILY_PRICE
+        q = query(db).filter(db.code == contract)
+        df = self.jqsdk.run_query(q)
+        return df
+
+    def getMainContractDailyPrice(self):
+        if not self.dailyPriceDict:
+            mainContract = self.getMainContract().code
+            for contract in mainContract:
+                self.dailyPriceDict[contract] = self.getDailyPrice(contract)
+        return self.dailyPriceDict
+
+    def getPositonDiff(self):
+        price = self.getMainContractDailyPrice()
+        for code, priceDf in price.items():
+            self.posDiffDict[code] = self.calcPositionDiff(priceDf)
+        df = pd.DataFrame(self.posDiffDict)
+        df.fillna(0, inplace=True)
+        return df
+
+    def plotPosDiff(self):
+        df = self.getPositonDiff()
+        # df = pd.read_csv(getTestPath('posDiff.csv'), index_col=0)
+        xtickLabels = df.index.tolist()
+
+        width = 1600
+
+        page = Page()
+
+        # 对比图
+        lineList = []
+        multiLine = Line(u'{}期权合约仓差对比走势图'.format(self.queryMonth), width=width)
+        displayCode = self.getDisplayContract().code.values.tolist()
+        for code, series in df.iteritems():
+            singleLine = Line(u'{}仓差走势'.format(self.getContractName(code)), width=width)
+            singleLine.add(self.getContractName(code), xtickLabels, series.values.tolist())
+            lineList.append(singleLine)
+            if code in displayCode:
+                multiLine.add(self.getContractName(code), xtickLabels, series.values.tolist())
+
+        page.add(multiLine)
+        for line in lineList:
+            page.add(line)
+
+        page.render(getTestPath('posDiff.html'))
 
 

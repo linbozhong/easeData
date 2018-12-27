@@ -3,13 +3,15 @@
 import unittest
 from datetime import datetime
 from easeData.const import *
-from easeData.database import (VnpyAdaptor)
+from easeData.database import (VnpyAdaptor, StudyDBAdaptor)
 
 vnpyAdaptor = VnpyAdaptor()
 
 vnpyAdaptor.setFreq('bar')
 vnpyAdaptor.setActiveConverter('JQDataConverter')
 vnpyAdaptor.setTargetPath('future', 'sp9999')
+
+studyAdaptor = StudyDBAdaptor()
 
 csvLoader = vnpyAdaptor.csvLoader
 
@@ -30,6 +32,17 @@ class TestCSVFilesLoader(unittest.TestCase):
         gen = self.obj.loadFiles(path)
         csv1 = gen.next()
         print(csv1)
+
+
+class TestStudyDBAdaptor(unittest.TestCase):
+    def setUp(self):
+        self.obj = studyAdaptor
+
+    def testJQDataOptionDailyFilesToDb(self):
+        self.obj.setActiveConverter('JQDataConverter')
+        self.obj.setFreq('daily')
+        self.obj.setTargetPath('option')
+        self.obj.filesToDb()
 
 
 class TestVnpyAdaptor(unittest.TestCase):
@@ -79,7 +92,7 @@ class TestVnpyAdaptor(unittest.TestCase):
     def testJaqsDataIsFileExisted(self):
         self.obj.setActiveConverter('JaqsDataConverter')
         converter = self.obj.activeConverter
-        print(converter.getDbExistedDataDay('rb1905'))
+        print(converter.getDbExistedDataDay('rb1905', ))
 
         filename = 'rb1905_20181123-210100_to_20181126-150000.csv'
         print(converter.isCsvBarInDB(filename))

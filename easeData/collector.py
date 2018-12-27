@@ -6,6 +6,7 @@ import jqdatasdk
 import pymongo
 import pandas as pd
 import numpy as np
+import traceback
 from jqdatasdk import opt, query
 from collections import OrderedDict
 from jaqs.data import DataApi
@@ -442,6 +443,8 @@ class JQDataCollector(DataCollector):
     def downloadOptionData(self, type):
         """
         下载期权基础数据。
+        注意：用这个方法在获取日线数据时，随着数据量的增大，每次增量加数据，都要加载已有的大文件，多次操作会导致越到后面操作速度越慢。
+        鉴于随着期权合约的增多，每日的日线数据量都不小，最好拆分成每日一张的的表格，然后存入数据库。
         :return:
         """
 
@@ -453,8 +456,7 @@ class JQDataCollector(DataCollector):
             filename = u'{}_{}.csv'.format(OPTION, DAILY)
             path = os.path.join(self.getPricePath(OPTION, DAILY), filename)
             dataDb = opt.OPT_DAILY_PRICE
-            # 这个方法在获取日线数据时，随着数据量的增大，增量加数据，会多次加载已有的大文件，导致越到后面操作速度越慢。
-            # 最好还是拆分成月份的表格，然后存入数据库。
+
         else:
             return
 
@@ -506,33 +508,41 @@ class JQDataCollector(DataCollector):
     #         else:
     #             self.info(u'{}:{}'.format(DATA_IS_NONE, filename))
 
-    def downloadOptionDaily(self):
-        filename = u'{}_{}.csv'.format(OPTION, DAILY)
+    def downloadOptionDailyByDate(self, tradeDate):
+        """
+        按交易日下载期权日线数据（合约较多，每日数据量多）。
+        :param tradeDate: datetime
+        :return:
+        """
+        filename = u'{}_{}_{}.csv'.format(OPTION, DAILY, dateToStr(tradeDate))
         path = os.path.join(self.getPricePath(OPTION, DAILY), filename)
-
         if not os.path.exists(path):
             try:
-                q = query(opt.OPT_DAILY_PRICE)
+                q = query(opt.OPT_DAILY_PRICE).filter(opt.OPT_DAILY_PRICE.date == tradeDate)
                 df = self.run_query(q)
                 if not df.empty:
-                    df.to_csv(path, encoding='utf-8-sig')
+                    df.to_csv(path, encoding='utf-8-sig', index=False)
                     self.info(u'{}:{}'.format(FILE_DOWNLOAD_SUCCEED, filename))
                 else:
                     self.info(u'{}:{}'.format(DATA_IS_NONE, filename))
             except Exception as e:
                 msg = u"{}:{}".format(ERROR_UNKNOWN, e.message.decode('gb2312'))
                 self.error(msg)
+                traceback.print_exc()
         else:
-            df_file = pd.read_csv(path, encoding='utf-8-sig', index_col=0, parse_dates=True)
-            lastID = int(df_file['id'].iloc[-1])  # 源格式是numpy.int64要转成普通int
-            q = query(opt.OPT_DAILY_PRICE).filter(opt.OPT_DAILY_PRICE.id > lastID)
-            df_inc = self.run_query(q)
-            if not df_inc.empty:
-                df_new = pd.concat([df_file, df_inc])
-                df_new.to_csv(path, encoding='utf-8-sig')
-                self.info(u'{}:{}'.format(FILE_UPDATE_SUCCEED, filename))
-            else:
-                self.info(u'{}:{}'.format(DATA_IS_NONE, filename))
+            self.info(u'{}:{}'.format(FILE_IS_EXISTED, filename))
+
+    def downloadAllOptionDaily(self, start=None):
+        """
+        下载从指定日开始到今天的期权日线数据。
+        :param start: datetime
+        :return:
+        """
+        if start is None:
+            start = datetime(2015, 2, 9)
+        tradeDays = self.get_trade_days(start_date=start)
+        for tradeDate in tradeDays:
+            self.downloadOptionDailyByDate(tradeDate)
 
     def updateCsvContinuousBar(self, symbol):
         """
