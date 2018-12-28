@@ -304,22 +304,26 @@ class CorrelationAnalyzer(LoggerWrapper):
             fig.savefig(getTestPath(filename))
 
 
-class PositionDiffPlotter(object):
+class PositionDiffPlotter(LoggerWrapper):
     """
     期权品种仓差走势图
     """
 
     def __init__(self):
+        super(PositionDiffPlotter, self).__init__()
         self.jqsdk = JQDataCollector()
         self.tradingContractInfo = None
         self.mainContract = None
         self.displayContract = None
         self.contractName = None
         self.dailyPriceDict = OrderedDict()
-        self.posDiffDict = OrderedDict()
+        self.posDiffDf = None
 
+        self.isExcludeAdjusted = True
+        self.underlyingSymbol = '510050.XSHG'
+        self.exchange = 'XSHG'
         self.date = datetime(2018, 12, 26)
-        self.queryMonth = '1901'
+        self.queryMonth = '1812'
         self.queryExercisePrice = [
             2.1,
             2.15,
@@ -331,7 +335,7 @@ class PositionDiffPlotter(object):
             2.45,
             2.5
         ]
-        self.displayExercisePrice = [
+        self.compExercisePrice = [
             2.5,
             2.3,
             2.35,
@@ -339,6 +343,11 @@ class PositionDiffPlotter(object):
 
     @staticmethod
     def calcPositionDiff(dailyDf):
+        """
+        从日行情DataFrame计算仓差。
+        :param dailyDf:
+        :return:
+        """
         df = dailyDf.set_index('date')
         df['prePosition'] = df['position'].shift(1)
         df['positionDiff'] = df['position'] - df['prePosition']
@@ -346,85 +355,258 @@ class PositionDiffPlotter(object):
         return df['positionDiff'].map(int)
 
     def getTradingContract(self):
+        """
+        获取某个月份的交易合约。
+        :return:
+        """
         if self.tradingContractInfo is None:
-            date = self.date
-            exchange = 'XSHG'
-            db = opt.OPT_DAILY_PREOPEN
-            q = query(db).filter(db.exchange_code == exchange, db.date == date)
-            self.tradingContractInfo = self.jqsdk.run_query(q)
+            filename = u'{}_{}.csv'.format(OPTION, BASIC)
+            path = os.path.join(self.jqsdk.getBasicPath(OPTION), filename)
+            if not os.path.exists(path):
+                db = opt.OPT_CONTRACT_INFO
+                q = query(db).filter(db.exchange_code == self.exchange,
+                                     db.underlying_symbol == self.underlyingSymbol).order_by(
+                    db.id.desc())  # api有数量限制，降序优先获取最新数据
+                df = self.jqsdk.run_query(q)
+            else:
+                df = pd.read_csv(path, index_col=0)
+                mask = (df.exchange_code == self.exchange) & (df.underlying_symbol == self.underlyingSymbol)
+                df = df[mask]
+
+            # 筛选符合月份的数据
+            postfix = 'M' if self.isExcludeAdjusted else ''
+            filterWord = self.queryMonth + postfix
+            filterFunc = lambda x: filterWord in x
+            monthMask = df.trading_code.map(filterFunc)
+            df = df[monthMask]
+
+            self.tradingContractInfo = df
         return self.tradingContractInfo
 
-    def getMainContract(self):
-        if self.mainContract is None:
-            df = self.getTradingContract()
-            filterWord = self.queryMonth + 'M'
-            filterFunc = lambda x: filterWord in x
-            mask1 = df.trading_code.map(filterFunc)
-            mask2 = df.exercise_price.isin(self.queryExercisePrice)
-            df = df[mask1 & mask2]
-            df = df.sort_values(by='name')
-            self.mainContract = df
-        return self.mainContract
-
     def getContractName(self, contractCode):
+        """
+        获取期权合约的中文名。
+        :param contractCode: string
+                期权代码
+        :return:
+        """
         if self.contractName is None:
-            df = self.getMainContract()
+            df = self.getTradingContract()
             df = df.set_index('code')
             self.contractName = df['name']
         return self.contractName[contractCode]
 
-    def getDisplayContract(self):
-        if self.displayContract is None:
-            df = self.getMainContract()
-            mask = df.exercise_price.isin(self.displayExercisePrice)
-            self.displayContract = df[mask]
-        return self.displayContract
-
     def getDailyPrice(self, contract):
+        """
+        获取期权合约的日行情数据。
+        :param contract: string
+                期权代码。
+        :return:
+        """
         db = opt.OPT_DAILY_PRICE
         q = query(db).filter(db.code == contract)
         df = self.jqsdk.run_query(q)
         return df
 
-    def getMainContractDailyPrice(self):
+    def getDisplayContract(self):
+        """
+        仅显示设定的部分合约。
+        :return:
+        """
+        if self.mainContract is None:
+            df = self.getTradingContract()
+            mask = df.exercise_price.isin(self.queryExercisePrice)
+            df = df[mask]
+            df = df.sort_values(by='name')
+            self.mainContract = df
+        return self.mainContract
+
+    def getCompContract(self):
+        """
+        选出要对比的合约。
+        :return:
+        """
+        if self.displayContract is None:
+            df = self.getDisplayContract()
+            mask = df.exercise_price.isin(self.compExercisePrice)
+            self.displayContract = df[mask]
+        return self.displayContract
+
+    def getAllContractDailyPrice(self):
+        """
+        获取该月份的所有合约的日线数据，并保存为字典。
+        :param args:
+        :param kwargs:
+        :return:
+        """
         if not self.dailyPriceDict:
-            mainContract = self.getMainContract().code
-            for contract in mainContract:
+            contracts = self.getTradingContract().code
+            for contract in contracts:
                 self.dailyPriceDict[contract] = self.getDailyPrice(contract)
         return self.dailyPriceDict
 
+    def getGoupedCode(self):
+        """
+        获取按行权价分组的期权代码。
+        :return:
+        """
+        df = self.getTradingContract()
+        df = df.sort_values(by='exercise_price')
+        grouped = df.groupby('exercise_price')
+        groupCode = OrderedDict()
+        for exercisePrice, df in grouped:
+            groupCode[exercisePrice] = df['code'].tolist()
+        return groupCode
+
     def getPositonDiff(self):
-        price = self.getMainContractDailyPrice()
-        for code, priceDf in price.items():
-            self.posDiffDict[code] = self.calcPositionDiff(priceDf)
-        df = pd.DataFrame(self.posDiffDict)
-        df.fillna(0, inplace=True)
-        return df
+        """
+        获取所有的仓差数据。
+        :return:
+        """
+        if self.posDiffDf is None:
+            price = self.getAllContractDailyPrice()
+            posDiffDict = dict()
+            for code, priceDf in price.items():
+                posDiffDict[code] = self.calcPositionDiff(priceDf)
+            df = pd.DataFrame(posDiffDict)
+            df.fillna(0, inplace=True)
+            self.posDiffDf = df
+        return self.posDiffDf
 
     def plotPosDiff(self):
+        """
+        绘制并输出仓差走势图。
+        :return:
+        """
         df = self.getPositonDiff()
+        groupCode = self.getGoupedCode()
         # df = pd.read_csv(getTestPath('posDiff.csv'), index_col=0)
         xtickLabels = df.index.tolist()
-
         width = 1600
 
         page = Page()
 
-        # 对比图
-        lineList = []
-        multiLine = Line(u'{}期权合约仓差对比走势图'.format(self.queryMonth), width=width)
-        displayCode = self.getDisplayContract().code.values.tolist()
-        for code, series in df.iteritems():
-            singleLine = Line(u'{}仓差走势'.format(self.getContractName(code)), width=width)
-            singleLine.add(self.getContractName(code), xtickLabels, series.values.tolist())
-            lineList.append(singleLine)
-            if code in displayCode:
-                multiLine.add(self.getContractName(code), xtickLabels, series.values.tolist())
-
+        # 对比组图
+        multiLine = Line(u'期权仓差对比走势图', width=width)
+        for price in self.compExercisePrice:
+            codeList = groupCode[price]
+            for code in codeList:
+                multiLine.add(self.getContractName(code), xtickLabels, df[code].values.tolist())
         page.add(multiLine)
+
+        # 行权价组图
+        lineList = []
+        for exercisePrice, codeList in groupCode.items():
+            line = Line(u'行权价{}仓差走势'.format(str(int(exercisePrice * 1000))), width=width)
+            for code in codeList:
+                line.add(self.getContractName(code), xtickLabels, df[code].values.tolist())
+            lineList.append(line)
         for line in lineList:
             page.add(line)
 
-        page.render(getTestPath('posDiff.html'))
+        page.render(getTestPath('posDiff{}.html'.format(self.queryMonth)))
 
+
+class SellBuyRatioPlotter(LoggerWrapper):
+    """
+    期权沽购比走势图
+    """
+
+    def __init__(self):
+        super(SellBuyRatioPlotter, self).__init__()
+        self.jqsdk = JQDataCollector()
+        self.contractTypeDict = None
+        self.underlyingSymbol = '510050.XSHG'
+
+    def getContractInfo(self):
+        filename = u'{}_{}.csv'.format(OPTION, BASIC)
+        path = os.path.join(self.jqsdk.getBasicPath(OPTION), filename)
+        df = pd.read_csv(path, index_col=0)
+        mask = (df.underlying_symbol == self.underlyingSymbol)
+        df = df[mask]
+        return df
+
+    def getContractType(self, code):
+        """
+        合约代码到看涨看跌的映射
+        :param code:
+        :return:
+        """
+        if self.contractTypeDict is None:
+            df = self.getContractInfo()
+            df = df.set_index('code')
+            self.contractTypeDict = df['contract_type'].to_dict()
+        return self.contractTypeDict.get(code, 'NO')
+
+    def calcRatioByDate(self, fp):
+        """
+        计算单日的沽购比值
+        :param fp: filepath
+                单日价格文件
+        :return:
+        """
+        df = pd.read_csv(fp, index_col=0)
+
+        df['contract_type'] = df.code.map(self.getContractType)
+        df.to_csv(getTestPath('ratiosource.csv'))
+
+        grouped = df.groupby(by='contract_type')
+        resultDf = grouped.sum()
+        resultDf.to_csv(getTestPath('ratiosum.csv'))
+
+        volume = resultDf['volume']
+        money = resultDf['money']
+        position = resultDf['position']
+
+        resultDict = dict()
+        resultDict['date'] = df['date'].iloc[0]
+        resultDict['volumeRatio'] = round(float(volume['PO']) / volume['CO'], 2)
+        resultDict['moneyRatio'] = round(float(money['PO']) / money['CO'], 2)
+        resultDict['positionRatio'] = round(float(position['PO']) / position['CO'], 2)
+        return resultDict
+
+    def getRatio(self):
+        filename = 'sb_ratio_data.csv'
+        root = self.jqsdk.getPricePath(OPTION, DAILY)
+        path = os.path.join(root, filename)
+        if not os.path.exists(path):
+            fps = [os.path.join(root, fn) for fn in os.listdir(root)]
+            data = []
+            for fp in fps:
+                self.info(u'计算{}'.format(fp))
+                data.append(self.calcRatioByDate(fp))
+            df = pd.DataFrame(data)
+            df.to_csv(path, encoding='utf-8-sig')
+        else:
+            df = pd.read_csv(path, index_col=0)
+
+        df = df.set_index('date')
+        start = '2015-02-09'
+        end = df.index[-1]
+        underlyingPrice = self.jqsdk.get_price(self.underlyingSymbol, start_date=start, end_date=end)
+        underlyingPrice.index = underlyingPrice.index.map(dateToStr)
+        close = underlyingPrice['close']
+        df[self.underlyingSymbol] = close
+        return df
+
+    def plotRatio(self):
+        df = self.getRatio()
+        xtickLabels = df.index.tolist()
+        width = 1600
+
+        nameDict = {'moneyRatio': u'沽购金额比',
+                    'volumeRatio': u'沽购成交比',
+                    'positionRatio': u'沽购持仓比',
+                    self.underlyingSymbol: u'50ETF'
+                    }
+
+        page = Page()
+
+        # 对比组图
+        multiLine = Line(u'沽购比走势图', width=width)
+        for name, series in df.iteritems():
+            multiLine.add(nameDict[name], xtickLabels, series.values.tolist(), is_datazoom_show=True, datazoom_type='both')
+        page.add(multiLine)
+
+        page.render(getTestPath('ratioTrend.html'))
 

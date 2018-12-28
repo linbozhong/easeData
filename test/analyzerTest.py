@@ -1,12 +1,14 @@
 # coding:utf-8
 
 import unittest
+import os
 from easeData.functions import getTestPath
-from easeData.analyze import CorrelationAnalyzer, PositionDiffPlotter
+from easeData.analyze import CorrelationAnalyzer, PositionDiffPlotter, SellBuyRatioPlotter
 from datetime import datetime
 
 corrAnalyzer = CorrelationAnalyzer()
 positionDiffPlotter = PositionDiffPlotter()
+sellBuyRatioPlotter = SellBuyRatioPlotter()
 
 
 class TestCorrAnalyzer(unittest.TestCase):
@@ -71,14 +73,14 @@ class TestPositionDiffTrend(unittest.TestCase):
 
     def testGetTradingContractInfo(self):
         df = self.obj.getTradingContract()
-        print(df)
-
-    def testGetMainContract(self):
-        df = self.obj.getMainContract()
-        df.to_csv(getTestPath('optionMainContract.csv'), encoding='utf-8-sig')
+        df.to_csv(getTestPath('optionTradingContract.csv'), encoding='utf-8-sig')
 
     def testGetDisplayContract(self):
         df = self.obj.getDisplayContract()
+        df.to_csv(getTestPath('optionMainContract.csv'), encoding='utf-8-sig')
+
+    def testGetCompContract(self):
+        df = self.obj.getCompContract()
         df.to_csv(getTestPath('optionDisplayContract.csv'), encoding='utf-8-sig')
 
     def testGetDailyPrice(self):
@@ -87,11 +89,15 @@ class TestPositionDiffTrend(unittest.TestCase):
         df.to_csv(getTestPath('optionPrice.csv'), encoding='utf-8-sig')
 
     def testGetContractName(self):
-        contract = '10001562.XSHG'
-        print(self.obj.getContractName(contract))
+        contracts = ['10001562.XSHG', '10001542.XSHG']
+        print([self.obj.getContractName(c) for c in contracts])
+
+    def testGetGroupedCode(self):
+        codes = self.obj.getGoupedCode()
+        print(codes)
 
     def testGetMainContractDailyPrice(self):
-        price = self.obj.getMainContractDailyPrice()
+        price = self.obj.getAllContractDailyPrice()
         for code, df in price.items():
             fp = getTestPath('{}.csv'.format(code))
             df.to_csv(fp, encoding='utf-8-sig')
@@ -103,6 +109,31 @@ class TestPositionDiffTrend(unittest.TestCase):
     def testPlotPosDiff(self):
         self.obj.plotPosDiff()
 
+
+class TestSellBuyRatioPlotter(unittest.TestCase):
+    def setUp(self):
+        self.obj = sellBuyRatioPlotter
+
+    def testGetContractInfo(self):
+        df = self.obj.getContractInfo()
+        df.to_csv(getTestPath('contractInfo.csv'), encoding='utf-8-sig')
+
+    def testGetContractType(self):
+        print(self.obj.getContractType('10000033.XSHG'))
+        print(self.obj.contractTypeDict)
+
+    def testCalcRatioByDate(self):
+        filename = 'option_daily_2018-12-27.csv'
+        fp = os.path.join(self.obj.jqsdk.getPricePath('option', 'daily'), filename)
+        d = self.obj.calcRatioByDate(fp)
+        print(d)
+
+    def testGetRatio(self):
+        df = self.obj.getRatio()
+        df.to_csv(getTestPath('ratio.csv'), encoding='utf-8-sig')
+
+    def testPlotRatio(self):
+        self.obj.plotRatio()
 
 if __name__ == '__main__':
     unittest.main()
