@@ -381,6 +381,7 @@ class PositionDiffPlotter(LoggerWrapper):
             df = df[monthMask]
 
             self.tradingContractInfo = df
+            print(df.name.values[0], type(df.name.values[0]))
         return self.tradingContractInfo
 
     def getContractName(self, contractCode):
@@ -473,11 +474,32 @@ class PositionDiffPlotter(LoggerWrapper):
             self.posDiffDf = df
         return self.posDiffDf
 
+    @staticmethod
+    def nameToColor(name):
+        """
+        通过期权名称获取要使用的颜色
+        :return:
+        """
+        sell = u'沽'
+        buy = u'购'
+        color = 'null'
+
+        if not isinstance(name, unicode):
+            name = name.decode('utf-8')
+
+        if sell in name:
+            color = 'red'
+        elif buy in name:
+            color = 'blue'
+
+        return color
+
     def plotPosDiff(self):
         """
         绘制并输出仓差走势图。
         :return:
         """
+
         df = self.getPositonDiff()
         groupCode = self.getGoupedCode()
         # df = pd.read_csv(getTestPath('posDiff.csv'), index_col=0)
@@ -605,8 +627,8 @@ class SellBuyRatioPlotter(LoggerWrapper):
         # 对比组图
         multiLine = Line(u'沽购比走势图', width=width)
         for name, series in df.iteritems():
-            multiLine.add(nameDict[name], xtickLabels, series.values.tolist(), is_datazoom_show=True, datazoom_type='both')
+            multiLine.add(nameDict[name], xtickLabels, series.values.tolist(), is_datazoom_show=True,
+                          datazoom_type='both')
         page.add(multiLine)
 
         page.render(getTestPath('ratioTrend.html'))
-
