@@ -76,7 +76,7 @@ class TestPositionDiffTrend(unittest.TestCase):
         df.to_csv(getTestPath('optionTradingContract.csv'), encoding='utf-8-sig')
 
     def testGetDisplayContract(self):
-        df = self.obj.getDisplayContract()
+        df = self.obj.getMainContract()
         df.to_csv(getTestPath('optionMainContract.csv'), encoding='utf-8-sig')
 
     def testGetCompContract(self):
@@ -103,11 +103,26 @@ class TestPositionDiffTrend(unittest.TestCase):
             df.to_csv(fp, encoding='utf-8-sig')
 
     def testGetPosDiff(self):
-        df = self.obj.getPositonDiff()
+        df = self.obj.getPositionDiff()
         df.to_csv(getTestPath('posDiff.csv'), encoding='utf-8-sig')
 
+    def testGetPosition(self):
+        df = self.obj.getPosition()
+        df.to_csv(getTestPath('position.csv'), encoding='utf-8-sig')
+
     def testPlotPosDiff(self):
-        self.obj.plotPosDiff()
+        self.obj.setQueryMonth('1901')
+        self.obj.plotData(self.obj.getPositionDiff)
+
+    def testPlotPosition(self):
+        # self.obj.setQueryMonth('1902')
+        # self.obj.plotData(self.obj.getPosition)
+
+        mission = ['1901', '1902', '1903', '1906']
+        for m in mission:
+            self.obj.setQueryMonth(m)
+            self.obj.plotData(self.obj.getPosition)
+            self.obj.cleanCache()
 
 
 class TestSellBuyRatioPlotter(unittest.TestCase):
@@ -134,6 +149,7 @@ class TestSellBuyRatioPlotter(unittest.TestCase):
 
     def testPlotRatio(self):
         self.obj.plotRatio()
+
 
 if __name__ == '__main__':
     unittest.main()

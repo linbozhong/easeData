@@ -54,6 +54,7 @@ class DataVendor(LoggerWrapper):
         self.vendor = VENDOR_BASE
         self.basicDp = ''
         self.priceDp = ''
+        self.researchDp = ''
 
     @staticmethod
     def addExchange(symbol, exchange):
@@ -157,6 +158,18 @@ class DataVendor(LoggerWrapper):
             os.makedirs(self.priceDp)
         return self.priceDp
 
+    def getResearchPath(self, types, *args):
+        """
+        获取研究数据目录
+        :param types: string
+        :param args:
+        :return:
+        """
+        self.researchDp = os.path.join(self._dataPath, RESEARCH, types, *args)
+        if not os.path.exists(self.researchDp):
+            os.makedirs(self.researchDp)
+        return self.researchDp
+
     def getBasicPath(self, types):
         """
         获取基础数据文件目录，不存在则创建。
@@ -196,7 +209,6 @@ class DataVendor(LoggerWrapper):
         if not os.path.exists(path):
             os.makedirs(path)
         return path
-
 
 # class JaqsDataVendor(DataVendor):
 #     """

@@ -20,6 +20,7 @@ DB_UPDATE_COMPLETE = u'数据库价格序列更新完成'
 
 # 文件操作
 FILE_IS_EXISTED = u'文件已存在'
+FILE_IS_NOT_EXISTED = u'文件不存在'
 FILE_DOWNLOAD_SUCCEED = u'文件下载完成'
 FILE_UPDATE_SUCCEED = u'文件增量更新完成'
 FILE_IS_NEWEST = u'文件是最新的，不需要增量更新'
