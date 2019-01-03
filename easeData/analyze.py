@@ -564,7 +564,6 @@ class PositionDiffPlotter(LoggerWrapper):
         # df = pd.read_csv(getTestPath('posDiff.csv'), index_col=0)
         xtickLabels = df.index.tolist()
 
-
         page = Page()
 
         # 对比组图
@@ -628,7 +627,7 @@ class SellBuyRatioPlotter(LoggerWrapper):
         计算单日的沽购比值
         :param fp: filepath
                 单日价格文件
-        :return:
+        :return: dict
         """
         df = pd.read_csv(fp, index_col=0)
 
@@ -651,6 +650,11 @@ class SellBuyRatioPlotter(LoggerWrapper):
         return resultDict
 
     def load_files(self, fpList):
+        """
+        从给定的文件名列表依次计算每日的沽购数据。
+        :param fpList:
+        :return:
+        """
         data = []
         for fp in fpList:
             try:
@@ -663,7 +667,7 @@ class SellBuyRatioPlotter(LoggerWrapper):
         return df
 
     def getRatio(self):
-        filename = 'sb_ratio_data.csv'
+        filename = 'pc_ratio_data.csv'
         path = os.path.join(self.jqsdk.getPricePath(OPTION, STUDY_DAILY), filename)
 
         root = self.jqsdk.getPricePath(OPTION, DAILY)
@@ -701,40 +705,72 @@ class SellBuyRatioPlotter(LoggerWrapper):
         df[self.underlyingSymbol] = close
         return df
 
-    def plotRatio(self):
+    def getRatioIndicator(self):
+        f = lambda x: round(x, 2)
         df = self.getRatio()
-        xtickLabels = df.index.tolist()
+
+        df['positionRatio_ma5'] = df['positionRatio'].rolling(5).mean()
+        df['positionRatioToMa5'] = df['positionRatio'] / df['positionRatio_ma5']
+        df['positionRatioToMa5'] = df['positionRatioToMa5'].map(f)
+        df['moneyRatio_ma5'] = df['moneyRatio'].rolling(5).mean()
+        df['moneyRatioToMa5'] = df['moneyRatio'] / df['moneyRatio_ma5']
+        df['moneyRatioToMa5'] = df['moneyRatioToMa5'].map(f)
+        return df
+
+    def plotRatio(self):
+        """
+        绘制沽购各项指标走势图。
+        :return:
+        """
         width = 1600
         height = 600
 
-        nameDict = {'moneyRatio': u'沽购金额比',
-                    'volumeRatio': u'沽购成交比',
-                    'positionRatio': u'沽购持仓比',
-                    self.underlyingSymbol: u'50ETF'
+        displayItem = ['positionRatioToMa5', self.underlyingSymbol, 'moneyRatioToMa5']
+
+        nameDict = {'moneyRatio': u'沽购成交金额比',
+                    'volumeRatio': u'沽购成交量比',
+                    'positionRatio': u'沽购持仓量比',
+                    'positionRatioToMa5': u'P/C持仓量比5天平均',
+                    'moneyRatioToMa5': u'P/C成交金额比5天平均',
+                    self.underlyingSymbol: u'50ETF收盘价'
                     }
 
         zoomDict = {
             'is_datazoom_show': True,
-            'datazoom_type': 'both'
+            'datazoom_type': 'both',
+            'line_width': 2
         }
 
-        page = Page()
+        df = self.getRatioIndicator()
+        xtickLabels = df.index.tolist()
 
+        page = Page()
         overlap = Overlap(width=width, height=height)
 
         # 对比组图
         multiLine = Line(u'沽购比走势图')
         etfLine = Line(u'50etf')
+        areaLine = Line(u'持仓量沽购比')
         for name, series in df.iteritems():
             if name == self.underlyingSymbol:
                 etfLine.add(nameDict[name], xtickLabels, series.values.tolist(),
-                            yaxis_min='dataMin', yaxis_max='dataMax', yaxis_interval=5, **zoomDict)
+                            yaxis_min=1.6, yaxis_max=3.6, yaxis_force_interval=0.2, **zoomDict)
                 # is_fill = True, area_color = '#cc0a0a', area_opacity = 0.2, line_opacity = 0.2, is_symbol_show = False
-            else:
-                multiLine.add(nameDict[name], xtickLabels, series.values.tolist(), line_width=2, yaxis_interval=5,
+            elif name == 'positionRatio':
+                areaLine.add(nameDict[name], xtickLabels, series.values.tolist(), yaxis_min=0,
+                             yaxis_max=5, yaxis_force_interval=0.5, is_fill=True, area_opacity=0.5,
+                             **zoomDict)
+            elif name in displayItem:
+                multiLine.add(nameDict[name], xtickLabels, series.values.tolist(), yaxis_min=0,
+                              yaxis_max=5, yaxis_force_interval=0.5,
                               **zoomDict)
 
-        overlap.add(multiLine)
-        overlap.add(etfLine, yaxis_index=1, is_add_yaxis=True)
+        overlap.add(etfLine)
+        overlap.add(multiLine, yaxis_index=1, is_add_yaxis=True)
+        overlap.add(areaLine, yaxis_index=1)
         page.add(overlap)
-        page.render(getTestPath('ratioTrend.html'))
+
+        htmlName = 'ratioTrend.html'
+        outputDir = self.jqsdk.getResearchPath(OPTION, 'ratioTrend')
+        page.render(os.path.join(outputDir, htmlName))
+
