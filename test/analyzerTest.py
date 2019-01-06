@@ -3,12 +3,13 @@
 import unittest
 import os
 from easeData.functions import getTestPath
-from easeData.analyze import CorrelationAnalyzer, PositionDiffPlotter, SellBuyRatioPlotter
+from easeData.analyze import CorrelationAnalyzer, PositionDiffPlotter, SellBuyRatioPlotter, QvixPlotter
 from datetime import datetime
 
 corrAnalyzer = CorrelationAnalyzer()
 positionDiffPlotter = PositionDiffPlotter()
 sellBuyRatioPlotter = SellBuyRatioPlotter()
+qvixPlotter = QvixPlotter()
 
 
 class TestCorrAnalyzer(unittest.TestCase):
@@ -131,15 +132,37 @@ class TestSellBuyRatioPlotter(unittest.TestCase):
 
     def testGetContractInfo(self):
         df = self.obj.getContractInfo()
+        print(self.obj.contractInfo)
         df.to_csv(getTestPath('contractInfo.csv'), encoding='utf-8-sig')
 
-    def testGetContractType(self):
-        print(self.obj.getContractType('10000033.XSHG'))
+    def testGetDataFromContractInfo(self):
+        code = '10001641.XSHG'
+        print(self.obj.getContractType(code))
         print(self.obj.contractTypeDict)
 
-    def testCalcRatioByDate(self):
-        filename = 'option_daily_2018-12-27.csv'
+        print(self.obj.getTradingCode(code))
+        print(self.obj.tradingCodeDict)
+
+        print(self.obj.getLastTradeDate(code))
+        print(self.obj.lastTradeDateDict)
+
+    def testGetNearbyContract(self):
+        # filename = 'option_daily_2018-12-07.csv'
+        filename = 'option_daily_2018-12-25.csv'
         fp = os.path.join(self.obj.jqsdk.getPricePath('option', 'daily'), filename)
+        df = self.obj.getNearbyContract(fp)
+        df.to_csv(getTestPath('nearbyContract.csv'))
+
+    def testCalcRatioByDate(self):
+        filename = 'option_daily_2019-01-03.csv'
+        fp = os.path.join(self.obj.jqsdk.getPricePath('option', 'daily'), filename)
+
+        # 近月
+        d = self.obj.calcRatioByDate(fp)
+        print(d)
+
+        # 全月份
+        self.obj.isOnlyNearby = False
         d = self.obj.calcRatioByDate(fp)
         print(d)
 
@@ -148,7 +171,28 @@ class TestSellBuyRatioPlotter(unittest.TestCase):
         df.to_csv(getTestPath('ratio.csv'), encoding='utf-8-sig')
 
     def testPlotRatio(self):
+        self.obj.isOnlyNearby = True
         self.obj.plotRatio()
+
+        self.obj.isOnlyNearby = False
+        self.obj.plotRatio()
+
+
+class TestQvixPlotter(unittest.TestCase):
+    def setUp(self):
+        self.obj = qvixPlotter
+
+    def testPlotKline(self):
+        self.obj.plotKline()
+
+    def testPlotMa(self):
+        self.obj.plotMa()
+
+    def testPlotBoll(self):
+        self.obj.plotBollChanel()
+
+    def testPlotAll(self):
+        self.obj.plotAll()
 
 
 if __name__ == '__main__':

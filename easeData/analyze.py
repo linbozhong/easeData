@@ -10,13 +10,15 @@ from datetime import datetime, timedelta
 from collections import OrderedDict
 from dateutil.relativedelta import relativedelta
 from jqdatasdk import opt, query
-from pyecharts import Line
+
+from pyecharts import Line, Kline
 from pyecharts import Page, Overlap
+from pyecharts import Style
 
 from database import MongoDbConnector
 from base import LoggerWrapper
 from collector import JQDataCollector
-from functions import (strToDate, dateToStr, getTestPath)
+from functions import (strToDate, dateToStr, getTestPath, getDataDir)
 from const import *
 from text import *
 
@@ -336,9 +338,9 @@ class PositionDiffPlotter(LoggerWrapper):
             2.5
         ]
         self.compExercisePrice = [
-            2.2,
             2.25,
             2.3,
+            2.35,
         ]
 
         self.red = '#c91818'
@@ -599,28 +601,102 @@ class SellBuyRatioPlotter(LoggerWrapper):
     def __init__(self):
         super(SellBuyRatioPlotter, self).__init__()
         self.jqsdk = JQDataCollector()
+
+        self.contractInfo = None
         self.contractTypeDict = None
+        self.tradingCodeDict = None
+        self.lastTradeDateDict = None
+
         self.underlyingSymbol = '510050.XSHG'
 
+        self.isOnlyNearby = True
+
     def getContractInfo(self):
-        filename = u'{}_{}.csv'.format(OPTION, BASIC)
-        path = os.path.join(self.jqsdk.getBasicPath(OPTION), filename)
-        df = pd.read_csv(path, index_col=0)
-        mask = (df.underlying_symbol == self.underlyingSymbol)
-        df = df[mask]
-        return df
+        """
+        获取期权合约的基础信息，并做缓存。
+        :return: pd.DataFrame
+        """
+        if self.contractInfo is None:
+            filename = u'{}_{}.csv'.format(OPTION, BASIC)
+            path = os.path.join(self.jqsdk.getBasicPath(OPTION), filename)
+            df = pd.read_csv(path, index_col=0)
+            mask = (df.underlying_symbol == self.underlyingSymbol)
+            df = df[mask]
+            df = df.set_index('code')
+            self.contractInfo = df
+        return self.contractInfo
+
+    def getTradingCode(self, code):
+        """
+        获取合约编码-合约交易代码的映射，并缓存。
+        :param code: string
+                合约编码
+        :return: string
+                合约交易代码
+        """
+        if self.tradingCodeDict is None:
+            df = self.getContractInfo()
+            self.tradingCodeDict = df['trading_code'].to_dict()
+        return self.tradingCodeDict.get(code, None)
+
+    def getLastTradeDate(self, code):
+        """
+        获取合约编码-合约最后交易日的映射，并缓存。
+        :param code: string
+                合约编码
+        :return: string
+                合约最后交易日
+        """
+        if self.lastTradeDateDict is None:
+            df = self.getContractInfo()
+            self.lastTradeDateDict = df['last_trade_date'].to_dict()
+        return self.lastTradeDateDict.get(code, None)
 
     def getContractType(self, code):
         """
-        合约代码到看涨看跌的映射
-        :param code:
-        :return:
+        获取合约编码-合约看涨看跌类型的映射，并缓存
+        :param code: string
+                合约编码
+        :return: string
+                看涨看跌类型简码
         """
         if self.contractTypeDict is None:
             df = self.getContractInfo()
-            df = df.set_index('code')
+            # df = df.set_index('code')
             self.contractTypeDict = df['contract_type'].to_dict()
-        return self.contractTypeDict.get(code, 'NO')
+        return self.contractTypeDict.get(code, None)
+
+    def getNearbyContract(self, fp):
+        """
+        选出最近月合约的数据，如果距离到期日不足7日，则选出次近月的数据。
+        :param fp: filePath
+                某个交易日的所有期权合约日行情数据
+        :return: pd.DataFrame
+        """
+        df = pd.read_csv(fp, index_col=0)
+
+        df['last_trade_date'] = df['code'].map(self.getLastTradeDate)
+        df['trading_code'] = df['code'].map(self.getTradingCode)
+        df = df[df.trading_code.notnull()]  # 排除非标的的数据
+
+        getMonth = lambda tradingCode: int(tradingCode[7: 11])  # 50etf期权, 8-12位表示合约月份
+        df['month'] = df['trading_code'].map(getMonth)
+
+        monthList = df['month'].drop_duplicates()
+        monthList = monthList.tolist()
+        monthList.sort()
+
+        df_current = df[df.month == monthList[0]]
+        date = strToDate(df_current['date'].iloc[0])
+        lastDate = strToDate(df_current['last_trade_date'].iloc[0])
+
+        if lastDate - date > timedelta(days=7):
+            resDf = df_current
+        else:
+            df_next = df[df.month == monthList[1]]
+            resDf = df_next
+
+        return resDf
 
     def calcRatioByDate(self, fp):
         """
@@ -629,10 +705,13 @@ class SellBuyRatioPlotter(LoggerWrapper):
                 单日价格文件
         :return: dict
         """
-        df = pd.read_csv(fp, index_col=0)
+        if self.isOnlyNearby:
+            df = self.getNearbyContract(fp)
+        else:
+            df = pd.read_csv(fp, index_col=0)
 
         df['contract_type'] = df.code.map(self.getContractType)
-        df.to_csv(getTestPath('ratiosource.csv'))
+        # df.to_csv(getTestPath('ratiosource.csv'))
 
         grouped = df.groupby(by='contract_type')
         resultDf = grouped.sum()
@@ -667,18 +746,16 @@ class SellBuyRatioPlotter(LoggerWrapper):
         return df
 
     def getRatio(self):
-        filename = 'pc_ratio_data.csv'
+        if self.isOnlyNearby:
+            filename = 'pc_ratio_data_nearby.csv'
+        else:
+            filename = 'pc_ratio_data.csv'
         path = os.path.join(self.jqsdk.getPricePath(OPTION, STUDY_DAILY), filename)
-
         root = self.jqsdk.getPricePath(OPTION, DAILY)
+
         if not os.path.exists(path):
             fps = [os.path.join(root, fn) for fn in os.listdir(root)]
             df = self.load_files(fps)
-            # data = []
-            # for fp in fps:
-            #     self.info(u'计算{}'.format(fp))
-            #     data.append(self.calcRatioByDate(fp))
-            # df = pd.DataFrame(data)
             df.to_csv(path, encoding='utf-8-sig')
         else:
             df = pd.read_csv(path, index_col=0)
@@ -706,6 +783,10 @@ class SellBuyRatioPlotter(LoggerWrapper):
         return df
 
     def getRatioIndicator(self):
+        """
+        获取持仓量比值的衍生计算数据
+        :return:
+        """
         f = lambda x: round(x, 2)
         df = self.getRatio()
 
@@ -722,10 +803,16 @@ class SellBuyRatioPlotter(LoggerWrapper):
         绘制沽购各项指标走势图。
         :return:
         """
-        width = 1600
+        width = 1500
         height = 600
+        displayItem = ['volumeRatio', self.underlyingSymbol, 'moneyRatio']
 
-        displayItem = ['positionRatioToMa5', self.underlyingSymbol, 'moneyRatioToMa5']
+        if self.isOnlyNearby:
+            title = u'50et期权近月沽购比'
+            htmlName = 'ratio_nearby.html'
+        else:
+            title = u'50etf期权全月份沽购比'
+            htmlName = 'ratio_all_month.html'
 
         nameDict = {'moneyRatio': u'沽购成交金额比',
                     'volumeRatio': u'沽购成交量比',
@@ -738,7 +825,9 @@ class SellBuyRatioPlotter(LoggerWrapper):
         zoomDict = {
             'is_datazoom_show': True,
             'datazoom_type': 'both',
-            'line_width': 2
+            'line_width': 2,
+            'yaxis_name_size': 14,
+            'yaxis_name_gap': 35
         }
 
         df = self.getRatioIndicator()
@@ -749,28 +838,160 @@ class SellBuyRatioPlotter(LoggerWrapper):
 
         # 对比组图
         multiLine = Line(u'沽购比走势图')
-        etfLine = Line(u'50etf')
+        etfLine = Line(title)
         areaLine = Line(u'持仓量沽购比')
         for name, series in df.iteritems():
             if name == self.underlyingSymbol:
-                etfLine.add(nameDict[name], xtickLabels, series.values.tolist(),
-                            yaxis_min=1.6, yaxis_max=3.6, yaxis_force_interval=0.2, **zoomDict)
-                # is_fill = True, area_color = '#cc0a0a', area_opacity = 0.2, line_opacity = 0.2, is_symbol_show = False
+                etfLine.add(nameDict[name], xtickLabels, series.values.tolist(), yaxis_min=1.5, yaxis_max=3.4,
+                            yaxis_name=u'50etf收盘价', **zoomDict)
+                #  yaxis_force_interval=0.2
             elif name == 'positionRatio':
-                areaLine.add(nameDict[name], xtickLabels, series.values.tolist(), yaxis_min=0,
-                             yaxis_max=5, yaxis_force_interval=0.5, is_fill=True, area_opacity=0.5,
+                areaLine.add(nameDict[name], xtickLabels, series.values.tolist(), is_fill=True, area_opacity=0.4,
+                             yaxis_name=u'沽购比', is_splitline_show=False, yaxis_min=0, yaxis_max=5,
                              **zoomDict)
+                # yaxis_force_interval = 0.5,
             elif name in displayItem:
-                multiLine.add(nameDict[name], xtickLabels, series.values.tolist(), yaxis_min=0,
-                              yaxis_max=5, yaxis_force_interval=0.5,
-                              **zoomDict)
+                multiLine.add(nameDict[name], xtickLabels, series.values.tolist(), **zoomDict)
 
         overlap.add(etfLine)
-        overlap.add(multiLine, yaxis_index=1, is_add_yaxis=True)
-        overlap.add(areaLine, yaxis_index=1)
+        overlap.add(areaLine, yaxis_index=1, is_add_yaxis=True)
+        overlap.add(multiLine, yaxis_index=1)
         page.add(overlap)
 
-        htmlName = 'ratioTrend.html'
         outputDir = self.jqsdk.getResearchPath(OPTION, 'ratioTrend')
         page.render(os.path.join(outputDir, htmlName))
 
+
+def tooltip_formatter(params):
+    """
+    修改原显示格式，添加了时间。
+    :param params:
+    :return:
+    """
+    text = (params[0].seriesName + '<br/>' +
+            u'- 日期:' + params[0].name + '<br/>' +
+            u'- 开盘:' + params[0].data[1] + '<br/>' +
+            u'- 收盘:' + params[0].data[2] + '<br/>' +
+            u'- 最低:' + params[0].data[3] + '<br/>' +
+            u'- 最高:' + params[0].data[4])
+    return text
+
+
+class QvixPlotter(LoggerWrapper):
+    """
+    Qvix日线行情绘图器。
+    """
+
+    def __init__(self):
+        super(QvixPlotter, self).__init__()
+        self.dailyData = None
+
+        self.width = 1500
+        self.height = 600
+
+        self.genStyle = {
+            'is_datazoom_show': True,
+            'datazoom_type': 'both'
+        }
+
+    def getCsvData(self):
+        if self.dailyData is None:
+            filename = 'qvix_daily.csv'
+            fp = os.path.join(getDataDir(), RESEARCH, OPTION, 'qvix', filename)
+            df = pd.read_csv(fp, index_col=0, parse_dates=True)
+            df.index = df.index.map(dateToStr)
+            self.dailyData = df
+        return self.dailyData
+
+    def addCloseMa(self, n):
+        f = lambda x: round(x, 2)
+
+        df = self.getCsvData()
+        colName = 'close_ma{}'.format(n)
+        df[colName] = df['close'].rolling(n).mean()
+        df[colName] = df[colName].map(f)
+        return df[colName]
+
+    def addCloseStd(self, n):
+        df = self.getCsvData()
+        colName = 'close_std{}'.format(n)
+        df[colName] = df['close'].rolling(n).std()
+        return df[colName]
+
+    def plotKline(self, title=u'k线'):
+        kStyle = self.genStyle.copy()
+
+        df = self.getCsvData()
+        dateList = df.index.tolist()
+
+        gen = df.iterrows()
+        ohlc = [[data['open'], data['close'], data['low'], data['high']] for idx_, data in gen]
+
+        kline = Kline(title)
+        kline.add(u'Qvix日线', dateList, ohlc, tooltip_formatter=tooltip_formatter, **kStyle)
+        # kline.render(getTestPath('qvixkline.html'))
+
+        return kline
+
+    def plotMa(self, n1=5, n2=20, n3=60):
+        lineStyle = self.genStyle.copy()
+        lineStyle['line_width'] = 2
+
+        title = u'移动平均线'
+        overlap = Overlap(width=self.width, height=self.height)
+        kline = self.plotKline(title)
+        overlap.add(kline)
+
+        df = self.getCsvData()
+        dateList = df.index.tolist()
+
+        for ma in [n1, n2, n3]:
+            label = u'MA{}'.format(ma)
+            line = Line()
+            line.add(label, dateList, self.addCloseMa(ma).tolist(), **lineStyle)
+            overlap.add(line)
+
+        # overlap.render(getTestPath('qvixkline.html'))
+        return overlap
+
+    def plotBollChanel(self, n=20):
+        lineStyle = self.genStyle.copy()
+        lineStyle['line_width'] = 2
+
+        title = u'布林Boll通道'
+        overlap = Overlap(width=self.width, height=self.height)
+        kline = self.plotKline(title)
+        overlap.add(kline)
+
+        df = self.getCsvData()
+        dateList = df.index.tolist()
+
+        lineMid = Line()
+        lineMid.add(u'布林MID', dateList, self.addCloseMa(n).tolist(), **lineStyle)
+        overlap.add(lineMid)
+
+        upList = self.addCloseMa(n) + 2 * self.addCloseStd(n)
+        upList = upList.tolist()
+        lineUp = Line()
+        lineUp.add(u'布林UP', dateList, upList, **lineStyle)
+        overlap.add(lineUp)
+
+        downList = self.addCloseMa(n) - 2 * self.addCloseStd(n)
+        downList = downList.tolist()
+        lineDown = Line()
+        lineDown.add(u'布林Down', dateList, downList, **lineStyle)
+        overlap.add(lineDown)
+
+        return overlap
+        # overlap.render(getTestPath('qvixkline_boll.html'))
+
+    def plotAll(self):
+        page = Page()
+        ma = self.plotMa()
+        boll = self.plotBollChanel()
+        page.add(ma)
+        page.add(boll)
+
+        htmlName = 'qvix_daily.html'
+        outputDir = os.path.join(getDataDir(), RESEARCH, OPTION, 'qvix')
+        page.render(os.path.join(outputDir, htmlName))

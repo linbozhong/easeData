@@ -1,6 +1,7 @@
 # coding:utf-8
 
 import os
+import re
 import codecs
 import json
 from datetime import datetime
@@ -186,3 +187,13 @@ def dateToDtStr(date):
             日期格式 %Y-%m-%d %H:%M:%S
     """
     return datetime.strftime(date, '%Y-%m-%d %H:%M:%S')
+
+
+def parseFilename(filename):
+    """
+    通用文件名解析，把文件名转换成列表。以'-', '.'或'_'做为分界符。
+    :param filename: string
+    :return: list
+                包含文件名信息的列表
+    """
+    return re.split(r'[_.-]', filename)

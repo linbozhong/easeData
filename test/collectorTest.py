@@ -91,11 +91,11 @@ class TestJQDataCollector(unittest.TestCase):
         #     self.obj.downloadOptionData('daily')
 
     def testDownloadOptionDailyByDate(self):
-        today = datetime(2018, 12, 26)
+        today = datetime(2019, 1, 1)
         df = self.obj.downloadOptionDailyByDate(today)
 
     def testDownloadAllOptionDaily(self):
-        start = datetime(2018, 12, 25)
+        start = datetime(2019, 1, 1)
         self.obj.downloadAllOptionDaily(start)
         # self.obj.downloadAllOptionDaily()
 
