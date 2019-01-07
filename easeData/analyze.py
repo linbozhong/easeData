@@ -842,16 +842,16 @@ class SellBuyRatioPlotter(LoggerWrapper):
         areaLine = Line(u'持仓量沽购比')
         for name, series in df.iteritems():
             if name == self.underlyingSymbol:
-                etfLine.add(nameDict[name], xtickLabels, series.values.tolist(), yaxis_min=1.5, yaxis_max=3.4,
-                            yaxis_name=u'50etf收盘价', **zoomDict)
-                #  yaxis_force_interval=0.2
+                etfLine.add(nameDict[name], xtickLabels, series.values.tolist(), yaxis_min=1.5, yaxis_max=3.5,
+                            yaxis_force_interval=0.2, yaxis_name=u'50etf收盘价', **zoomDict)
             elif name == 'positionRatio':
                 areaLine.add(nameDict[name], xtickLabels, series.values.tolist(), is_fill=True, area_opacity=0.4,
                              yaxis_name=u'沽购比', is_splitline_show=False, yaxis_min=0, yaxis_max=5,
+                             yaxis_force_interval=0.5, mark_point=["max", "min"], mark_point_symbolsize=45,
                              **zoomDict)
-                # yaxis_force_interval = 0.5,
             elif name in displayItem:
-                multiLine.add(nameDict[name], xtickLabels, series.values.tolist(), **zoomDict)
+                multiLine.add(nameDict[name], xtickLabels, series.values.tolist(), mark_point=["max", "min"],
+                              mark_point_symbolsize=45, **zoomDict)
 
         overlap.add(etfLine)
         overlap.add(areaLine, yaxis_index=1, is_add_yaxis=True)
@@ -860,21 +860,6 @@ class SellBuyRatioPlotter(LoggerWrapper):
 
         outputDir = self.jqsdk.getResearchPath(OPTION, 'ratioTrend')
         page.render(os.path.join(outputDir, htmlName))
-
-
-def tooltip_formatter(params):
-    """
-    修改原显示格式，添加了时间。
-    :param params:
-    :return:
-    """
-    text = (params[0].seriesName + '<br/>' +
-            u'- 日期:' + params[0].name + '<br/>' +
-            u'- 开盘:' + params[0].data[1] + '<br/>' +
-            u'- 收盘:' + params[0].data[2] + '<br/>' +
-            u'- 最低:' + params[0].data[3] + '<br/>' +
-            u'- 最高:' + params[0].data[4])
-    return text
 
 
 class QvixPlotter(LoggerWrapper):
@@ -937,7 +922,7 @@ class QvixPlotter(LoggerWrapper):
         lineStyle = self.genStyle.copy()
         lineStyle['line_width'] = 2
 
-        title = u'移动平均线'
+        title = u'波动率指数移动平均线'
         overlap = Overlap(width=self.width, height=self.height)
         kline = self.plotKline(title)
         overlap.add(kline)
@@ -958,7 +943,7 @@ class QvixPlotter(LoggerWrapper):
         lineStyle = self.genStyle.copy()
         lineStyle['line_width'] = 2
 
-        title = u'布林Boll通道'
+        title = u'波动率指数Boll通道'
         overlap = Overlap(width=self.width, height=self.height)
         kline = self.plotKline(title)
         overlap.add(kline)
@@ -995,3 +980,18 @@ class QvixPlotter(LoggerWrapper):
         htmlName = 'qvix_daily.html'
         outputDir = os.path.join(getDataDir(), RESEARCH, OPTION, 'qvix')
         page.render(os.path.join(outputDir, htmlName))
+
+
+def tooltip_formatter(params):
+    """
+    修改原显示格式，添加了时间。
+    :param params:
+    :return:
+    """
+    text = (params[0].seriesName + '<br/>' +
+            u'- 日期:' + params[0].name + '<br/>' +
+            u'- 开盘:' + params[0].data[1] + '<br/>' +
+            u'- 收盘:' + params[0].data[2] + '<br/>' +
+            u'- 最低:' + params[0].data[3] + '<br/>' +
+            u'- 最高:' + params[0].data[4])
+    return text
