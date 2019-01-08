@@ -1,0 +1,2 @@
+python optionDailyTask.py
+pause
