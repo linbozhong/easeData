@@ -53,6 +53,11 @@ class TestJQDataCollector(unittest.TestCase):
         print(self.obj.convertFutureSymbol('sc1901'))
         print(self.obj.jqSymbolMap)
 
+    def testGetTradeDay(self):
+        date = datetime(2019, 1, 1)
+        print(self.obj.getNextTradeDay(date), type(self.obj.getNextTradeDay(date)))
+        print(self.obj.getPreTradeDay(date), type(self.obj.getPreTradeDay(date)))
+
     def testGetFutureExchangeMap(self):
         print(self.obj.getFutureExchangeMap())
         # print(self.obj.getPopularFuture())

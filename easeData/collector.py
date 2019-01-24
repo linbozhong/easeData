@@ -80,6 +80,8 @@ class JQDataCollector(DataCollector):
         self.dominantContinuousSymbolMap = None
         self.jqSymbolMap = {}
 
+        self.tradeDayCal = None
+
         self._initDailyCount()
         self._syncDailyCount()
         self.connectApi()
@@ -268,6 +270,37 @@ class JQDataCollector(DataCollector):
 
     def convertStockSymbol(self, symbol):
         pass
+
+    def getTradeDayCal(self):
+        """
+        获取所有交易日并缓存。
+        :return:
+        """
+        if self.tradeDayCal is None:
+            self.tradeDayCal = self.get_all_trade_days()
+        return self.tradeDayCal
+
+    def getNextTradeDay(self, date):
+        """
+        获取下一交易日。
+        :param date: datetime.datetime
+        :return: datetime.date
+        """
+        date = date.date()
+        days = self.getTradeDayCal()
+        days = days[days > date]
+        return days[0]
+
+    def getPreTradeDay(self, date):
+        """
+        获取上一交易日。
+        :param date: datetime.datetime
+        :return: datetime.date
+        """
+        date = date.date()
+        days = self.getTradeDayCal()
+        days = days[days < date]
+        return days[-1]
 
     def getFutureExchangeMap(self):
         """

@@ -13,7 +13,6 @@ from jqdatasdk import opt, query
 
 from pyecharts import Line, Kline
 from pyecharts import Page, Overlap
-from pyecharts import Style
 
 from database import MongoDbConnector
 from base import LoggerWrapper
@@ -361,6 +360,11 @@ class PositionDiffPlotter(LoggerWrapper):
         return df['positionDiff'].map(int)
 
     def setQueryMonth(self, month):
+        """
+        设置月份。
+        :param month:
+        :return:
+        """
         self.queryMonth = month
 
     def cleanCache(self):
@@ -589,7 +593,7 @@ class PositionDiffPlotter(LoggerWrapper):
             page.add(line)
 
         htmlName = '{}{}.html'.format(displayName.lower(), self.queryMonth)
-        outputDir = self.jqsdk.getResearchPath(OPTION, 'position')
+        outputDir = self.jqsdk.getResearchPath(OPTION, 'dailytask')
         page.render(os.path.join(outputDir, htmlName))
 
 
@@ -610,6 +614,17 @@ class SellBuyRatioPlotter(LoggerWrapper):
         self.underlyingSymbol = '510050.XSHG'
 
         self.isOnlyNearby = True
+
+        # 绘制平值期权价和图相关属性
+        self.atmCombinePrice = None
+        self.atmStart = None
+        self.atmEnd = None
+
+        # 绘制50etf成交量占比相关属性
+        self.idxStart = '2012-01-01'
+        self.etfIdx = '000016.XSHG'
+        self.shIdx = '000001.XSHG'
+        self.szIdx = '399106.XSHE'
 
     def getContractInfo(self):
         """
@@ -698,6 +713,250 @@ class SellBuyRatioPlotter(LoggerWrapper):
 
         return resDf
 
+    def getEtfMarketRatio(self):
+        """
+        获取50etf指数、上证指数、深证综指的成交量和成交额，并计算50etf占的比例。
+        :return: pd.DataFrame
+        """
+        start = self.idxStart
+        end = self.jqsdk.today
+        toPercent = lambda x: round(x * 100, 2)
+
+        # 收集数据
+        d = {}
+        volList = []
+        turnoverList = []
+        for idx in [self.etfIdx, self.shIdx, self.szIdx]:
+            df = self.jqsdk.get_price(idx, start_date=start, end_date=end)
+            vol = df['volume']
+            vol.name = idx
+            volList.append(vol)
+            turnover = df['money']
+            turnover.name = idx
+            turnoverList.append(turnover)
+        d['volumeRatio'] = volList
+        d['turnoverRatio'] = turnoverList
+
+        # 处理数据
+        postDataLst = []
+        for name, lst in d.iteritems():
+            df = pd.concat(lst, axis=1)
+            df[name] = df[self.etfIdx] / (df[self.shIdx] + df[self.szIdx])
+            df[name] = df[name].map(toPercent)
+            postDataLst.append(df[name])
+
+        return pd.concat(postDataLst, axis=1)
+
+    def plotEtfMarketRatio(self):
+        """
+        绘制50etf占两市成交量比例走势图。
+        :return:
+        """
+        nameDict = {'turnoverRatio': u'成交额占比',
+                    'volumeRatio': u'成交量占比',
+                    }
+
+        df = self.getEtfMarketRatio()
+        df.index = df.index.map(dateToStr)
+        # df = pd.read_csv(getTestPath('etfRatio.csv'), index_col=0)
+        idx = df.index.tolist()
+        overlap = Overlap(width=1500, height=600)
+        line = Line(u'50ETF成交占比', is_animation=False)
+        for colName, series in df.iteritems():
+            value = series.tolist()
+            line.add(nameDict[colName], idx, value,
+                     is_datazoom_show=True, datazoom_type='both', datazoom_range=[80, 100],
+                     tooltip_trigger='axis', tooltip_axispointer_type='cross',
+                     is_toolbox_show=False,
+                     is_symbol_show=False,
+                     yaxis_formatter='%'
+                     )
+            overlap.add(line)
+        htmlName = 'etfMarketRatio.html'
+        outputDir = self.jqsdk.getResearchPath(OPTION, 'dailytask')
+        overlap.render(os.path.join(outputDir, htmlName))
+
+    def setAtmStart(self, date):
+        self.atmStart = date
+
+    def setAtmEnd(self, date):
+        self.atmEnd = date
+
+    def getAtmPriceCombineByDate(self, fp):
+        """
+        获取某个交易日的平值期权价合分钟数据。
+        :param fp: 日行情数据csv文件路径
+        :return: tuple(string, pd.Series)
+        """
+        self.info(u'获取单日价和数据:{}'.format(os.path.basename(fp)))
+
+        df = self.getNearbyContract(fp)
+        date = strToDate(df['date'].iloc[0])
+        month = df['month'].iloc[0]
+
+        # 提取行权价
+        getStrike = lambda x: int(x[-4:])
+        df['strikePrice'] = df['trading_code'].map(getStrike)
+
+        # 过滤掉带A的合约
+        func = lambda x: x[11] == 'M'
+        mask = df['trading_code'].map(func)
+        df = df[mask]
+
+        # 按行权价分组，并计算认购和认购的权利金价差，存入字典
+        grouped = df.groupby('strikePrice')
+        groupedDict = dict(list(grouped))
+        spreadList = []
+        for strikePrice, df in groupedDict.items():
+            close = df.close.tolist()
+            spread = abs(close[0] - close[1])
+            spreadList.append((strikePrice, spread))
+        spreadList.sort(key=lambda x: (x[1], x[0]))  # 以元祖的第二项(即价差)优先排序
+
+        # 获取平值卖购和卖沽的价和数据
+        atmStrike = spreadList[0][0]  # 取平值期权的行权价
+        atmDf = groupedDict.get(atmStrike)
+        label = '{}-{}'.format(month, atmStrike)
+        closeList = []
+        for code in atmDf.code.tolist():
+            # 今日确定平值的期权，取下一个交易日的数据
+            nextTradeDay = self.jqsdk.getNextTradeDay(date)
+            minuteDf = self.jqsdk.get_price(code, nextTradeDay, nextTradeDay + timedelta(days=1), '1m')
+            close = minuteDf.close
+            closeList.append(close)
+        mergeClose = closeList[0] + closeList[1]
+        mergeClose = mergeClose.map(lambda x: round(x, 4))
+        mergeClose.name = label
+
+        return label, mergeClose
+
+    def getRecentDays(self, nDays=7):
+        """
+        取最近n个交易日的起止日期。
+        :param nDays:
+        :return: tuple(string, string)
+        """
+        # 获取交易日
+        tradeDays = self.jqsdk.getTradeDayCal()
+
+        # 获取截至日期
+        today = self.jqsdk.today
+        if today.date() in tradeDays:
+            end = self.jqsdk.getPreTradeDay(today)
+        else:
+            end = self.jqsdk.getPreTradeDay(self.jqsdk.getPreTradeDay(today))
+
+        preTradeDays = tradeDays[tradeDays <= end]
+        dateRange = preTradeDays[-nDays:]
+        return dateToStr(dateRange[0]), dateToStr(dateRange[-1])
+
+    def getAtmPriceCombineByRange(self, start, end):
+        """
+        取某个日期区间的平值期权组的价合数据。
+        :param start: string
+        :param end: string
+        :return: list[tuple(string, pd.Series)]
+        """
+        tradeDays = self.jqsdk.getTradeDayCal()
+        start = strToDate(start).date()
+        end = strToDate(end).date()
+        dateRange = tradeDays[(tradeDays >= start) & (tradeDays <= end)]
+
+        fnames = ['option_daily_{}.csv'.format(dateToStr(date)) for date in dateRange]
+        fps = [os.path.join(self.jqsdk.getPricePath('option', 'daily'), filename) for filename in fnames]
+
+        resultList = [self.getAtmPriceCombineByDate(fp) for fp in fps]
+        return resultList
+
+    def mergeAtmPriceCombine(self):
+        """
+        拼接每日的平值期权价合数据。
+        同一合约的纵向拼接，不同合约的横向拼接。
+        :return: pd.DataFrame
+        """
+        # 如果没有指定日期，默认获取最近7个交易日
+        if not self.atmStart or not self.atmEnd:
+            self.atmStart, self.atmEnd = self.getRecentDays()
+        resultList = self.getAtmPriceCombineByRange(self.atmStart, self.atmEnd)
+
+        # 把按交易日组成的数据列表改成按行权价分组
+        merger = dict()
+        for label, series in resultList:
+            merger.setdefault(label, []).append(series)
+
+        # 拼合所有数据
+        data = []
+        for label, seriesList in merger.items():
+            if len(seriesList) > 1:
+                df = pd.concat(seriesList)  # 同一行权价纵向连接
+                data.append(df)
+            else:
+                data.append(seriesList[0])  # 某个行权价仅平值一天，只有一个数据
+        self.atmCombinePrice = pd.concat(data, axis=1, sort=True)
+        return self.atmCombinePrice
+
+    def plotAtmCombinePrice(self):
+        """
+        绘制平值期权价和走势图。
+        :return:
+        """
+        if self.atmCombinePrice is None:
+            self.mergeAtmPriceCombine()
+        df = self.atmCombinePrice
+        # df = pd.read_csv(getTestPath('atm.csv'), index_col=0, parse_dates=True)
+        yMin = df.min().sort_values().values[0] * 0.95
+        yMax = df.max().sort_values().values[-1] * 1.05
+
+        idx = df.index.tolist()
+        marklineList = [{'xAxis': i} for i in range(0, len(idx), 240)]
+
+        overlap = Overlap(width=1500, height=600)
+        line = Line(u'平值购沽价和图', is_animation=False)
+        for colName, series in df.iteritems():
+            value = series.tolist()
+            # print(value, len(value))
+            line.add(colName, idx, value,
+                     is_datazoom_show=True, datazoom_type='both', datazoom_range=[0, 100],
+                     is_datazoom_extra_show=True, datazoom_extra_type='both', datazoom_extra_range=[0, 100],
+                     xaxis_interval=239, yaxis_min=yMin, yaxis_max=yMax,
+                     tooltip_trigger='axis', tooltip_formatter='{b}', tooltip_axispointer_type='cross',
+                     mark_line_raw=marklineList, mark_line_symbolsize=0,
+                     is_toolbox_show=False)
+            overlap.add(line)
+
+        htmlName = 'atmCombine.html'
+        outputDir = self.jqsdk.getResearchPath(OPTION, 'dailytask')
+        overlap.render(os.path.join(outputDir, htmlName))
+
+    def plotMinute(self):
+        """
+        测试方法。
+        :return:
+        """
+        m1_a = self.jqsdk.get_price('10001562.XSHG', '2018-12-25', '2018-12-25 16:00:00', '1m')
+        m1_b = self.jqsdk.get_price('10001562.XSHG', '2018-12-27', '2018-12-27 16:00:00', '1m')
+        m2 = self.jqsdk.get_price('10001571.XSHG', '2018-12-26', '2018-12-26 16:00:00', '1m')
+        m1 = pd.concat([m1_a, m1_b])
+        m1_close = m1.close
+        m2_close = m2.close
+        m1_close.name = 'm1c'
+        m2_close.name = 'm2c'
+        l = [m1_close, m2_close]
+        df = pd.concat(l, axis=1)
+        idx = df.index.tolist()
+
+        overlap = Overlap(width=1400, height=600)
+
+        line = Line(u'测试断层数据')
+        for colName, series in df.iteritems():
+            value = series.tolist()
+            line.add(colName, idx, value, is_datazoom_show=True, datazoom_type='both')
+            overlap.add(line)
+        overlap.render(getTestPath('duancengMinute.html'))
+
+    def getCallAddPutPrice(self):
+        pass
+
     def calcRatioByDate(self, fp):
         """
         计算单日的沽购比值
@@ -746,6 +1005,10 @@ class SellBuyRatioPlotter(LoggerWrapper):
         return df
 
     def getRatio(self):
+        """
+        从数据文件目录中读取每天的数据，生成每日的沽购比数据，并加入50etf的标的价格走势。
+        :return:
+        """
         if self.isOnlyNearby:
             filename = 'pc_ratio_data_nearby.csv'
         else:
@@ -827,7 +1090,9 @@ class SellBuyRatioPlotter(LoggerWrapper):
             'datazoom_type': 'both',
             'line_width': 2,
             'yaxis_name_size': 14,
-            'yaxis_name_gap': 35
+            'yaxis_name_gap': 35,
+            'tooltip_trigger': 'axis',
+            'tooltip_axispointer_type': 'cross'
         }
 
         df = self.getRatioIndicator()
@@ -858,7 +1123,7 @@ class SellBuyRatioPlotter(LoggerWrapper):
         overlap.add(multiLine, yaxis_index=1)
         page.add(overlap)
 
-        outputDir = self.jqsdk.getResearchPath(OPTION, 'ratioTrend')
+        outputDir = self.jqsdk.getResearchPath(OPTION, 'dailytask')
         page.render(os.path.join(outputDir, htmlName))
 
 
@@ -869,8 +1134,11 @@ class QvixPlotter(LoggerWrapper):
 
     def __init__(self):
         super(QvixPlotter, self).__init__()
+        self.jqsdk = JQDataCollector()
+
         self.dailyData = None
 
+        self.underlyingSymbol = '510050.XSHG'
         self.width = 1500
         self.height = 600
 
@@ -880,6 +1148,10 @@ class QvixPlotter(LoggerWrapper):
         }
 
     def getCsvData(self):
+        """
+        从文件中读取波动率数据
+        :return: pd.DataFrame
+        """
         if self.dailyData is None:
             filename = 'qvix_daily.csv'
             fp = os.path.join(getDataDir(), RESEARCH, OPTION, 'qvix', filename)
@@ -889,6 +1161,11 @@ class QvixPlotter(LoggerWrapper):
         return self.dailyData
 
     def addCloseMa(self, n):
+        """
+        计算均线，并保存到数据df中
+        :param n: int
+        :return: pd.Series
+        """
         f = lambda x: round(x, 2)
 
         df = self.getCsvData()
@@ -898,13 +1175,36 @@ class QvixPlotter(LoggerWrapper):
         return df[colName]
 
     def addCloseStd(self, n):
+        """
+        计算标准差，并保存到数据df中
+        :param n: int
+        :return: pd.Series
+        """
         df = self.getCsvData()
         colName = 'close_std{}'.format(n)
         df[colName] = df['close'].rolling(n).std()
         return df[colName]
 
-    def plotKline(self, title=u'k线'):
+    def add50etf(self):
+        """
+        获取同日期的50etf标的数据，并保存到数据df中
+        :return: pd.Series
+        """
+        df = self.getCsvData()
+        start = df.index[0]
+        end = strToDate(df.index[-1]) + timedelta(days=1)
+        end = dateToStr(end)
+        print(start, end)
+        underlyingPrice = self.jqsdk.get_price(self.underlyingSymbol, start_date=start, end_date=end)
+        underlyingPrice.index = underlyingPrice.index.map(dateToStr)
+        close = underlyingPrice['close']
+        df[self.underlyingSymbol] = close
+        return df[self.underlyingSymbol]
+
+    def plotKline(self, title=u'k线', addStyle=None):
         kStyle = self.genStyle.copy()
+        if addStyle is not None:
+            kStyle.update(addStyle)
 
         df = self.getCsvData()
         dateList = df.index.tolist()
@@ -913,10 +1213,22 @@ class QvixPlotter(LoggerWrapper):
         ohlc = [[data['open'], data['close'], data['low'], data['high']] for idx_, data in gen]
 
         kline = Kline(title)
-        kline.add(u'Qvix日线', dateList, ohlc, tooltip_formatter=tooltip_formatter, **kStyle)
+        kline.add(u'Qvix日线', dateList, ohlc, tooltip_formatter=kline_tooltip_formatter, **kStyle)
         # kline.render(getTestPath('qvixkline.html'))
 
         return kline
+
+    def getOverlapWithKline(self, title, **kwargs):
+        """
+        返回一个已经叠加了波动率指数k线图的叠加图。
+        :param title: string
+                叠加图标题
+        :return:
+        """
+        overlap = Overlap(width=self.width, height=self.height)
+        kline = self.plotKline(title, **kwargs)
+        overlap.add(kline)
+        return overlap
 
     def plotMa(self, n1=5, n2=20, n3=60):
         lineStyle = self.genStyle.copy()
@@ -937,6 +1249,31 @@ class QvixPlotter(LoggerWrapper):
             overlap.add(line)
 
         # overlap.render(getTestPath('qvixkline.html'))
+        return overlap
+
+    def plotEtf(self):
+        lineStyle = self.genStyle.copy()
+        lineStyle['line_width'] = 2
+
+        addStyle = {
+            'yaxis_min': 10,
+            'yaxis_max': 50,
+            'yaxis_force_interval': 5,
+            'yaxis_name': u'波动率',
+            'yaxis_name_size': 14,
+            'yaxis_name_gap': 35,
+        }
+        title = u'波动率指数叠加50etf价格'
+        overlap = self.getOverlapWithKline(title, addStyle=addStyle)  # 特殊坐标
+
+        dateList = self.getCsvData().index.tolist()
+        line = Line()
+        line.add(u'50ETF', dateList, self.add50etf().tolist(),
+                 yaxis_min=2, yaxis_max=3.2, yaxis_force_interval=0.12, yaxis_name=u'50etf收盘价',
+                 is_splitline_show=False, yaxis_name_size=14, yaxis_name_gap=35,
+                 **lineStyle)
+        overlap.add(line, yaxis_index=1, is_add_yaxis=True)
+
         return overlap
 
     def plotBollChanel(self, n=20):
@@ -971,18 +1308,25 @@ class QvixPlotter(LoggerWrapper):
         # overlap.render(getTestPath('qvixkline_boll.html'))
 
     def plotAll(self):
+        """
+        按顺序绘制所有的叠加图
+        :return:
+        """
         page = Page()
+        etf = self.plotEtf()
         ma = self.plotMa()
         boll = self.plotBollChanel()
-        page.add(ma)
+
+        page.add(etf)
         page.add(boll)
+        page.add(ma)
 
         htmlName = 'qvix_daily.html'
-        outputDir = os.path.join(getDataDir(), RESEARCH, OPTION, 'qvix')
+        outputDir = self.jqsdk.getResearchPath(OPTION, 'dailytask')
         page.render(os.path.join(outputDir, htmlName))
 
 
-def tooltip_formatter(params):
+def kline_tooltip_formatter(params):
     """
     修改原显示格式，添加了时间。
     :param params:
@@ -995,3 +1339,11 @@ def tooltip_formatter(params):
             u'- 最低:' + params[0].data[3] + '<br/>' +
             u'- 最高:' + params[0].data[4])
     return text
+
+
+def line_tooltip_formatter(params):
+    return params[0].name + ' : ' + params[0].data[1]
+
+
+def yaxis_formatter(params):
+    return params.se + ' percent'

@@ -12,7 +12,7 @@ def updateData():
 
 def plotPosition():
     print(u"绘制持仓量走势..")
-    mission = ['1901', '1902', '1903', '1906']
+    mission = ['1902', '1903', '1906', '1909']
     plotter = PositionDiffPlotter()
     for m in mission:
         plotter.setQueryMonth(m)
@@ -37,17 +37,33 @@ def plotQvix():
     plotter.plotAll()
 
 
+def plotAtm():
+    print(u"绘制平值期权走势..")
+
+    plotter = SellBuyRatioPlotter()
+    plotter.plotAtmCombinePrice()
+
+
+def plotEtfRatio():
+    print(u"绘制50etf成家量占比走势..")
+    plotter = SellBuyRatioPlotter()
+    plotter.plotEtfMarketRatio()
+
+
 def main():
     updateData()
     plotPosition()
     plotRatio()
     plotQvix()
+    plotAtm()
+    plotEtfRatio()
 
 
 if __name__ == '__main__':
     import os
     import sys
 
+    # 添加当前目录到py查找环境目录
     p = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     sys.path.append(p)
 

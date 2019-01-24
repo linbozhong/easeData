@@ -129,6 +129,8 @@ class TestPositionDiffTrend(unittest.TestCase):
 class TestSellBuyRatioPlotter(unittest.TestCase):
     def setUp(self):
         self.obj = sellBuyRatioPlotter
+        self.atmStart = '2019-01-07'
+        self.atmEnd = '2019-01-15'
 
     def testGetContractInfo(self):
         df = self.obj.getContractInfo()
@@ -153,6 +155,39 @@ class TestSellBuyRatioPlotter(unittest.TestCase):
         df = self.obj.getNearbyContract(fp)
         df.to_csv(getTestPath('nearbyContract.csv'))
 
+    def testGetRecentDays(self):
+        print(self.obj.getRecentDays(7))
+
+    def testGetAtm(self):
+        filename = 'option_daily_2019-01-09.csv'
+        fp = os.path.join(self.obj.jqsdk.getPricePath('option', 'daily'), filename)
+        res = self.obj.getAtmPriceCombineByDate(fp)
+        print res
+
+    def testGetAtmByRange(self):
+        start = '2019-01-01'
+        end = '2019-01-09'
+        reslist = self.obj.getAtmPriceCombineByRange(start, end)
+        print(reslist)
+
+    def testMergeAtm(self):
+        # self.obj.setAtmStart(self.atmStart)
+        # self.obj.setAtmEnd(self.atmEnd)
+        # df = self.obj.mergeAtmPriceCombine()
+        # df.to_csv(getTestPath('atm.csv'))
+
+        self.obj.plotAtmCombinePrice()
+
+    def testPlotMinute(self):
+        self.obj.plotMinute()
+
+    def testGetEtfRatio(self):
+        df = self.obj.getEtfMarketRatio()
+        df.to_csv(getTestPath('etfRatio.csv'))
+
+    def testPlotEtfRatio(self):
+        self.obj.plotEtfMarketRatio()
+
     def testCalcRatioByDate(self):
         filename = 'option_daily_2019-01-03.csv'
         fp = os.path.join(self.obj.jqsdk.getPricePath('option', 'daily'), filename)
@@ -174,13 +209,19 @@ class TestSellBuyRatioPlotter(unittest.TestCase):
         self.obj.isOnlyNearby = True
         self.obj.plotRatio()
 
-        self.obj.isOnlyNearby = False
-        self.obj.plotRatio()
+        # self.obj.isOnlyNearby = False
+        # self.obj.plotRatio()
 
 
 class TestQvixPlotter(unittest.TestCase):
     def setUp(self):
         self.obj = qvixPlotter
+
+    def testAdd50etf(self):
+        df = self.obj.add50etf()
+        print(df)
+        df.to_csv(getTestPath('50etf-qvix.csv'))
+
 
     def testPlotKline(self):
         self.obj.plotKline()
