@@ -8,6 +8,10 @@ from datetime import datetime
 from const import *
 
 
+def roundFloat(number, dig=2):
+    return round(number, dig)
+
+
 def loadSetting(filename, encoding='utf-8', **kwargs):
     """
     读取配置文件。

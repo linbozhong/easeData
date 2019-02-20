@@ -1,5 +1,6 @@
 # coding:utf-8
 
+import numpy as np
 import pandas as pd
 import os
 import pymongo
@@ -11,13 +12,13 @@ from collections import OrderedDict
 from dateutil.relativedelta import relativedelta
 from jqdatasdk import opt, query
 
-from pyecharts import Line, Kline
+from pyecharts import Line, Kline, Bar
 from pyecharts import Page, Overlap
 
 from database import MongoDbConnector
 from base import LoggerWrapper
 from collector import JQDataCollector
-from functions import (strToDate, dateToStr, getTestPath, getDataDir)
+from functions import (strToDate, dateToStr, getTestPath, getDataDir, roundFloat)
 from const import *
 from text import *
 
@@ -761,7 +762,7 @@ class SellBuyRatioPlotter(LoggerWrapper):
         # df = pd.read_csv(getTestPath('etfRatio.csv'), index_col=0)
         idx = df.index.tolist()
         overlap = Overlap(width=1500, height=600)
-        line = Line(u'50ETF成交占比', is_animation=False)
+        line = Line(u'50ETF成交占两市比例', is_animation=False)
         for colName, series in df.iteritems():
             value = series.tolist()
             line.add(nameDict[colName], idx, value,
@@ -844,7 +845,9 @@ class SellBuyRatioPlotter(LoggerWrapper):
         if today.date() in tradeDays:
             end = self.jqsdk.getPreTradeDay(today)
         else:
-            end = self.jqsdk.getPreTradeDay(self.jqsdk.getPreTradeDay(today))
+            latestTradeDay = self.jqsdk.getPreTradeDay(today)
+            latestTradeDayDt = datetime(latestTradeDay.year, latestTradeDay.month, latestTradeDay.day)
+            end = self.jqsdk.getPreTradeDay(latestTradeDayDt)
 
         preTradeDays = tradeDays[tradeDays <= end]
         dateRange = preTradeDays[-nDays:]
@@ -1160,6 +1163,20 @@ class QvixPlotter(LoggerWrapper):
             self.dailyData = df
         return self.dailyData
 
+    def get50etfPrice(self):
+        """
+        获取与qvix数据文件日期区间相同的50etf日线信息
+        :return: pd.DataFrame
+        """
+        df = self.getCsvData()
+        start = df.index[0]
+        end = strToDate(df.index[-1]) + timedelta(days=1)
+        end = dateToStr(end)
+        # print(start, end)
+        underlyingPrice = self.jqsdk.get_price(self.underlyingSymbol, start_date=start, end_date=end)
+        underlyingPrice.index = underlyingPrice.index.map(dateToStr)
+        return underlyingPrice
+
     def addCloseMa(self, n):
         """
         计算均线，并保存到数据df中
@@ -1191,17 +1208,64 @@ class QvixPlotter(LoggerWrapper):
         :return: pd.Series
         """
         df = self.getCsvData()
-        start = df.index[0]
-        end = strToDate(df.index[-1]) + timedelta(days=1)
-        end = dateToStr(end)
-        print(start, end)
-        underlyingPrice = self.jqsdk.get_price(self.underlyingSymbol, start_date=start, end_date=end)
-        underlyingPrice.index = underlyingPrice.index.map(dateToStr)
+        # start = df.index[0]
+        # end = strToDate(df.index[-1]) + timedelta(days=1)
+        # end = dateToStr(end)
+        # print(start, end)
+        # underlyingPrice = self.jqsdk.get_price(self.underlyingSymbol, start_date=start, end_date=end)
+        # underlyingPrice.index = underlyingPrice.index.map(dateToStr)
+        underlyingPrice = self.get50etfPrice()
         close = underlyingPrice['close']
         df[self.underlyingSymbol] = close
         return df[self.underlyingSymbol]
 
+    def add50etfParkinsonNumber(self, n):
+        """
+        计算parkinson波动率
+        :param n: int
+        :return: pd.Series
+        """
+        def parkinson(values):
+            return np.sqrt(sum(values ** 2 / (4 * np.log(2))) / len(values))
+
+        etfDf = self.get50etfPrice()
+        hlReturns = np.log(etfDf.high / etfDf.low)
+        parkinsonNumber = hlReturns.rolling(n).apply(parkinson, raw=False)
+        annualizedPk = parkinsonNumber * np.sqrt(252) * 100
+        annualizedPk = annualizedPk.map(roundFloat)
+
+        df = self.getCsvData()
+        colName = 'Parkinson{}'.format(n)
+        df[colName] = annualizedPk
+        return df[colName]
+
+    def addHistVolotility(self, n, isLogReturn=False):
+        """
+        计算50etf历史波动率
+        :param n: int
+        :return: pd.Series
+        """
+        f = lambda x: round(x, 2)
+
+        close = self.add50etf()
+        returns = close.pct_change()
+        if isLogReturn:
+            returns = np.log(returns + 1)
+        dailyVolStds = returns.rolling(n).std()
+        annualizedVols = dailyVolStds * np.sqrt(252) * 100  # 单位变成百分比
+        annualizedVols = annualizedVols.map(f)
+
+        colName = 'HV{}'.format(n)
+        self.dailyData[colName] = annualizedVols
+        return self.dailyData[colName]
+
     def plotKline(self, title=u'k线', addStyle=None):
+        """
+        返回波动率k线图对象
+        :param title:
+        :param addStyle: dict
+        :return:
+        """
         kStyle = self.genStyle.copy()
         if addStyle is not None:
             kStyle.update(addStyle)
@@ -1230,7 +1294,64 @@ class QvixPlotter(LoggerWrapper):
         overlap.add(kline)
         return overlap
 
+    def plotVolDiff(self, n=20):
+        """
+        绘制隐含波动率、历史波动率及其差额、parkinson波动率
+        :param n:
+        :return:
+        """
+        lineStyle = self.genStyle.copy()
+        lineStyle['line_width'] = 2
+
+        title = u'50etf历史波动率、隐含波动率对比、parkinson波动率'
+        overlap = Overlap(width=self.width, height=self.height)
+
+        data = {}
+        hv = 'HV{}'.format(n)
+        iv = 'IV'
+        parkinson = 'Parkinson{}'.format(n)
+        diff = '{}-{}'.format(iv, hv)
+        dateList = self.getCsvData().index.tolist()
+        data[hv] = self.addHistVolotility(n)
+        data[iv] = self.getCsvData().close
+        data[parkinson] = self.add50etfParkinsonNumber(n)
+
+        volDiff = data[iv] - data[hv]
+        volDiff = volDiff.map(lambda x: round(x, 2))
+
+        for lineName in [hv, iv, parkinson]:
+            line = Line(title)
+            line.add(lineName, dateList, data[lineName].tolist(),
+                     tooltip_trigger='axis', tooltip_axispointer_type='cross', mark_line=['average'],
+                     **lineStyle)
+            overlap.add(line)
+
+        # 需要颜色区分时使用
+        # volp = volDiff.map(lambda x: np.nan if x < 0 else round(x, 2))
+        # volm = volDiff.map(lambda x: np.nan if x >= 0 else round(x, 2))
+        # barp = Bar()
+        # barp.add(diff, dateList, volp.tolist())
+        # overlap.add(barp)
+        # barm = Bar()
+        # barm.add(diff, dateList, volm.tolist(), is_yaxis_inverse=True)
+        # overlap.add(barm)
+
+        bar = Bar()
+        bar.add(diff, dateList, volDiff.tolist())
+        overlap.add(bar)
+
+        htmlName = 'vol_diff.html'
+        outputDir = self.jqsdk.getResearchPath(OPTION, 'dailytask')
+        overlap.render(os.path.join(outputDir, htmlName))
+
     def plotMa(self, n1=5, n2=20, n3=60):
+        """
+        绘制均线系统叠加图
+        :param n1: int
+        :param n2: int
+        :param n3: int
+        :return:
+        """
         lineStyle = self.genStyle.copy()
         lineStyle['line_width'] = 2
 
@@ -1252,6 +1373,10 @@ class QvixPlotter(LoggerWrapper):
         return overlap
 
     def plotEtf(self):
+        """
+        绘制etf价格和波动率指数叠加图
+        :return:
+        """
         lineStyle = self.genStyle.copy()
         lineStyle['line_width'] = 2
 
@@ -1277,6 +1402,11 @@ class QvixPlotter(LoggerWrapper):
         return overlap
 
     def plotBollChanel(self, n=20):
+        """
+        绘制boll通道叠加图
+        :param n:
+        :return:
+        """
         lineStyle = self.genStyle.copy()
         lineStyle['line_width'] = 2
 

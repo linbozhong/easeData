@@ -222,6 +222,14 @@ class TestQvixPlotter(unittest.TestCase):
         print(df)
         df.to_csv(getTestPath('50etf-qvix.csv'))
 
+    def testAdd50etfParkinson(self):
+        s = self.obj.add50etfParkinsonNumber(20)
+        print(s)
+
+    def testAddHisVol(self):
+        s = self.obj.addHistVolotility(20)
+        print(s)
+        self.obj.dailyData.to_csv(getTestPath('50etf-hisvol.csv'))
 
     def testPlotKline(self):
         self.obj.plotKline()
@@ -234,6 +242,9 @@ class TestQvixPlotter(unittest.TestCase):
 
     def testPlotAll(self):
         self.obj.plotAll()
+
+    def testPlotVolDiff(self):
+        self.obj.plotVolDiff()
 
 
 if __name__ == '__main__':

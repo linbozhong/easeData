@@ -4,7 +4,7 @@
 def updateData():
     print(u"更新数据..")
     today = datetime.today()
-    start = today - timedelta(days=7)
+    start = today - timedelta(days=15)
     collector = JQDataCollector()
     collector.downloadOptionData('basic')
     collector.downloadAllOptionDaily(start)
@@ -35,6 +35,8 @@ def plotQvix():
     print(u"绘制波动率指数..")
     plotter = QvixPlotter()
     plotter.plotAll()
+    print(u"绘制50etf波动率差")
+    plotter.plotVolDiff()
 
 
 def plotAtm():
@@ -45,7 +47,7 @@ def plotAtm():
 
 
 def plotEtfRatio():
-    print(u"绘制50etf成家量占比走势..")
+    print(u"绘制50etf成交量占比走势..")
     plotter = SellBuyRatioPlotter()
     plotter.plotEtfMarketRatio()
 
@@ -56,7 +58,7 @@ def main():
     plotRatio()
     plotQvix()
     plotAtm()
-    plotEtfRatio()
+    # plotEtfRatio()
 
 
 if __name__ == '__main__':
