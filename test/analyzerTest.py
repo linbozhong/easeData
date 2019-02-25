@@ -130,7 +130,10 @@ class TestSellBuyRatioPlotter(unittest.TestCase):
     def setUp(self):
         self.obj = sellBuyRatioPlotter
         self.atmStart = '2019-01-07'
-        self.atmEnd = '2019-01-15'
+        self.atmEnd = '2019-01-29'
+
+        filename = 'option_daily_2019-02-21.csv'
+        self.fp = os.path.join(self.obj.jqsdk.getPricePath('option', 'daily'), filename)
 
     def testGetContractInfo(self):
         df = self.obj.getContractInfo()
@@ -155,6 +158,12 @@ class TestSellBuyRatioPlotter(unittest.TestCase):
         df = self.obj.getNearbyContract(fp)
         df.to_csv(getTestPath('nearbyContract.csv'))
 
+    def testGetAtmContract(self):
+        filename = 'option_daily_2019-01-25.csv'
+        fp = os.path.join(self.obj.jqsdk.getPricePath('option', 'daily'), filename)
+        df = self.obj.getAtmContract(fp)
+        df.to_csv(getTestPath('atmContract.csv'))
+
     def testGetRecentDays(self):
         print(self.obj.getRecentDays(7))
 
@@ -162,7 +171,31 @@ class TestSellBuyRatioPlotter(unittest.TestCase):
         filename = 'option_daily_2019-01-09.csv'
         fp = os.path.join(self.obj.jqsdk.getPricePath('option', 'daily'), filename)
         res = self.obj.getAtmPriceCombineByDate(fp)
-        print res
+        print(res)
+
+    def testGetAtmAlphaByDate(self):
+        res = self.obj.getAtmAlphaByDate(self.fp)
+        print(res)
+
+    def testGetAtmAlphaByRange(self):
+        df = self.obj.getAtmAlphaByRange('2019-02-20', '2019-02-20')
+        # df.to_csv(getTestPath('atmAlphaByRange.csv'))
+        print(df)
+
+    def testGetAtmReturnByRange(self):
+        res = self.obj.getAtmReturnByRange('2019-01-18', '2019-01-23')
+        print(res)
+
+    def testStrategyAtmLastTradeDays(self):
+        df = self.obj.strategyAtmLastTradeDays()
+        df.to_csv(getTestPath('strategyAtmLastTradeDays.csv'))
+
+    def testGetAtmAlpha(self):
+        df = self.obj.getAtmAlpha()
+        print(df)
+
+    def testPlotAtmAlpha(self):
+        self.obj.plotAtmAlpha()
 
     def testGetAtmByRange(self):
         start = '2019-01-01'

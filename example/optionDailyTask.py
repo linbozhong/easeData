@@ -41,9 +41,10 @@ def plotQvix():
 
 def plotAtm():
     print(u"绘制平值期权走势..")
-
     plotter = SellBuyRatioPlotter()
     plotter.plotAtmCombinePrice()
+    print(u"绘制平值期权Alpha..")
+    plotter.plotAtmAlpha()
 
 
 def plotEtfRatio():

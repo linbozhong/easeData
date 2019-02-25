@@ -4,7 +4,6 @@
     <list default="true" id="ffaee0d1-f720-4db3-a12e-7f8d46587b93" name="Default" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/easeData/analyze.py" beforeDir="false" afterPath="$PROJECT_DIR$/easeData/analyze.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/easeData/functions.py" beforeDir="false" afterPath="$PROJECT_DIR$/easeData/functions.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/example/optionDailyTask.py" beforeDir="false" afterPath="$PROJECT_DIR$/example/optionDailyTask.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/test/analyzerTest.py" beforeDir="false" afterPath="$PROJECT_DIR$/test/analyzerTest.py" afterDir="false" />
     </list>
@@ -19,8 +18,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/easeData/collector.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="566">
-              <caret line="297" column="30" selection-start-line="297" selection-start-column="30" selection-end-line="297" selection-end-column="30" />
+            <state relative-caret-position="833">
+              <caret line="324" column="47" selection-start-line="324" selection-start-column="47" selection-end-line="324" selection-end-column="47" />
               <folding>
                 <element signature="e#16#25#0" expanded="true" />
               </folding>
@@ -28,11 +27,11 @@
           </provider>
         </entry>
       </file>
-      <file pinned="false" current-in-tab="true">
+      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/test/analyzerTest.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="298">
-              <caret line="245" column="18" selection-start-line="245" selection-start-column="18" selection-end-line="245" selection-end-column="18" />
+            <state relative-caret-position="2860">
+              <caret line="196" column="19" selection-start-line="196" selection-start-column="19" selection-end-line="196" selection-end-column="19" />
               <folding>
                 <element signature="e#16#31#0" expanded="true" />
                 <element signature="e#422#2078#0" />
@@ -53,8 +52,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/test/collectorTest.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="832">
-              <caret line="101" column="19" selection-start-line="101" selection-start-column="19" selection-end-line="101" selection-end-column="19" />
+            <state relative-caret-position="1660">
+              <caret line="89" column="45" selection-start-line="89" selection-start-column="45" selection-end-line="89" selection-end-column="45" />
             </state>
           </provider>
         </entry>
@@ -62,8 +61,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/easeData/analyze.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="706">
-              <caret line="1326" column="29" lean-forward="true" selection-start-line="1326" selection-start-column="29" selection-end-line="1326" selection-end-column="29" />
+            <state relative-caret-position="18260">
+              <caret line="935" selection-start-line="935" selection-end-line="935" />
               <folding>
                 <element signature="e#16#34#0" expanded="true" />
               </folding>
@@ -72,10 +71,19 @@
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
+        <entry file="file://$APPLICATION_HOME_DIR$/helpers/pydev/_pydev_comm/server.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="580">
+              <caret line="33" selection-start-line="33" selection-end-line="33" />
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/example/optionDailyTask.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="445">
-              <caret line="38" column="25" lean-forward="true" selection-start-line="38" selection-start-column="25" selection-end-line="38" selection-end-column="25" />
+            <state relative-caret-position="472">
+              <caret line="63" lean-forward="true" selection-start-line="63" selection-end-line="63" />
             </state>
           </provider>
         </entry>
@@ -83,8 +91,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/easeData/functions.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="180">
-              <caret line="9" lean-forward="true" selection-start-line="9" selection-end-line="9" />
+            <state relative-caret-position="80">
+              <caret line="9" selection-start-line="9" selection-end-line="9" />
               <folding>
                 <element signature="e#16#25#0" expanded="true" />
               </folding>
@@ -103,15 +111,6 @@
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>saveBarToDb</find>
-      <find>setDbAdaptor</find>
-      <find>setDbAda</find>
-      <find>_lastCollection</find>
-      <find>_setDbCollection</find>
-      <find>to_csv</find>
-      <find>getDb</find>
-      <find>getFutureMainContractDate</find>
-      <find>self.today</find>
       <find>getPricePath</find>
       <find>_lastDbName</find>
       <find>isCsvBarInDB</find>
@@ -133,6 +132,15 @@
       <find>dailyData</find>
       <find>plotAtmCombinePrice</find>
       <find>option</find>
+      <find>getAtmPriceCombineByDate</find>
+      <find>query</find>
+      <find>run_query</find>
+      <find>today</find>
+      <find>self.today</find>
+      <find>parse_dates</find>
+      <find>getLastTradeDate</find>
+      <find>lastTradeDateDict</find>
+      <find>getFpsByDateRange</find>
     </findStrings>
     <replaceStrings>
       <replace>colData</replace>
@@ -179,9 +187,9 @@
         <option value="$PROJECT_DIR$/test/collectorTest.py" />
         <option value="$PROJECT_DIR$/easeData/collector.py" />
         <option value="$PROJECT_DIR$/easeData/functions.py" />
+        <option value="$PROJECT_DIR$/example/optionDailyTask.py" />
         <option value="$PROJECT_DIR$/test/analyzerTest.py" />
         <option value="$PROJECT_DIR$/easeData/analyze.py" />
-        <option value="$PROJECT_DIR$/example/optionDailyTask.py" />
       </list>
     </option>
   </component>
@@ -216,7 +224,6 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
-      <pane id="Scope" />
       <pane id="ProjectPane">
         <subPane>
           <expand>
@@ -238,6 +245,7 @@
           <select />
         </subPane>
       </pane>
+      <pane id="Scope" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -274,8 +282,29 @@
       </list>
     </option>
   </component>
-  <component name="RunManager" selected="Python tests.Nosetests for analyzerTest.TestQvixPlotter.testPlotVolDiff">
-    <configuration name="Nosetests for analyzerTest.TestQvixPlotter.testAdd50etf" type="tests" factoryName="Nosetests" temporary="true" nameIsGenerated="true">
+  <component name="RunManager" selected="Python tests.Nosetests for analyzerTest.TestSellBuyRatioPlotter.testPlotAtmAlpha">
+    <configuration name="analyze" type="PythonConfigurationType" factoryName="Python" temporary="true">
+      <module name="easeData" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/easeData" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/easeData/analyze.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="Nosetests for analyzerTest.TestSellBuyRatioPlotter.testGetAtmAlpha" type="tests" factoryName="Nosetests" temporary="true" nameIsGenerated="true">
       <module name="easeData" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -286,11 +315,11 @@
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <option name="_new_regexPattern" value="&quot;&quot;" />
       <option name="_new_additionalArguments" value="&quot;&quot;" />
-      <option name="_new_target" value="&quot;analyzerTest.TestQvixPlotter.testAdd50etf&quot;" />
+      <option name="_new_target" value="&quot;analyzerTest.TestSellBuyRatioPlotter.testGetAtmAlpha&quot;" />
       <option name="_new_targetType" value="&quot;PYTHON&quot;" />
       <method v="2" />
     </configuration>
-    <configuration name="Nosetests for analyzerTest.TestQvixPlotter.testAdd50etfParkinson" type="tests" factoryName="Nosetests" temporary="true" nameIsGenerated="true">
+    <configuration name="Nosetests for analyzerTest.TestSellBuyRatioPlotter.testGetAtmReturnByRange" type="tests" factoryName="Nosetests" temporary="true" nameIsGenerated="true">
       <module name="easeData" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -301,11 +330,11 @@
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <option name="_new_regexPattern" value="&quot;&quot;" />
       <option name="_new_additionalArguments" value="&quot;&quot;" />
-      <option name="_new_target" value="&quot;analyzerTest.TestQvixPlotter.testAdd50etfParkinson&quot;" />
+      <option name="_new_target" value="&quot;analyzerTest.TestSellBuyRatioPlotter.testGetAtmReturnByRange&quot;" />
       <option name="_new_targetType" value="&quot;PYTHON&quot;" />
       <method v="2" />
     </configuration>
-    <configuration name="Nosetests for analyzerTest.TestQvixPlotter.testPlotVolDiff" type="tests" factoryName="Nosetests" temporary="true" nameIsGenerated="true">
+    <configuration name="Nosetests for analyzerTest.TestSellBuyRatioPlotter.testPlotAtmAlpha" type="tests" factoryName="Nosetests" temporary="true" nameIsGenerated="true">
       <module name="easeData" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -316,11 +345,11 @@
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <option name="_new_regexPattern" value="&quot;&quot;" />
       <option name="_new_additionalArguments" value="&quot;&quot;" />
-      <option name="_new_target" value="&quot;analyzerTest.TestQvixPlotter.testPlotVolDiff&quot;" />
+      <option name="_new_target" value="&quot;analyzerTest.TestSellBuyRatioPlotter.testPlotAtmAlpha&quot;" />
       <option name="_new_targetType" value="&quot;PYTHON&quot;" />
       <method v="2" />
     </configuration>
-    <configuration name="Nosetests for analyzerTest.TestSellBuyRatioPlotter.testMergeAtm" type="tests" factoryName="Nosetests" temporary="true" nameIsGenerated="true">
+    <configuration name="Nosetests for analyzerTest.TestSellBuyRatioPlotter.testStrategyAtmLastTradeDays" type="tests" factoryName="Nosetests" temporary="true" nameIsGenerated="true">
       <module name="easeData" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -331,22 +360,7 @@
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <option name="_new_regexPattern" value="&quot;&quot;" />
       <option name="_new_additionalArguments" value="&quot;&quot;" />
-      <option name="_new_target" value="&quot;analyzerTest.TestSellBuyRatioPlotter.testMergeAtm&quot;" />
-      <option name="_new_targetType" value="&quot;PYTHON&quot;" />
-      <method v="2" />
-    </configuration>
-    <configuration name="Nosetests for analyzerTest.TestSellBuyRatioPlotter.testPlotEtfRatio" type="tests" factoryName="Nosetests" temporary="true" nameIsGenerated="true">
-      <module name="easeData" />
-      <option name="INTERPRETER_OPTIONS" value="" />
-      <option name="PARENT_ENVS" value="true" />
-      <option name="SDK_HOME" value="" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/test" />
-      <option name="IS_MODULE_SDK" value="true" />
-      <option name="ADD_CONTENT_ROOTS" value="true" />
-      <option name="ADD_SOURCE_ROOTS" value="true" />
-      <option name="_new_regexPattern" value="&quot;&quot;" />
-      <option name="_new_additionalArguments" value="&quot;&quot;" />
-      <option name="_new_target" value="&quot;analyzerTest.TestSellBuyRatioPlotter.testPlotEtfRatio&quot;" />
+      <option name="_new_target" value="&quot;analyzerTest.TestSellBuyRatioPlotter.testStrategyAtmLastTradeDays&quot;" />
       <option name="_new_targetType" value="&quot;PYTHON&quot;" />
       <method v="2" />
     </configuration>
@@ -381,21 +395,21 @@
       <method v="2" />
     </configuration>
     <list>
+      <item itemvalue="Python.analyze" />
       <item itemvalue="Python tests.Nosetests for test.collectorTest.TestJaqsCollector.testQueryBar" />
       <item itemvalue="Python tests.Nosetests for vnpyAdaptorTest.TestCSVFilesLoader.testGetFilePaths" />
-      <item itemvalue="Python tests.Nosetests for analyzerTest.TestQvixPlotter.testAdd50etf" />
-      <item itemvalue="Python tests.Nosetests for analyzerTest.TestQvixPlotter.testPlotVolDiff" />
-      <item itemvalue="Python tests.Nosetests for analyzerTest.TestSellBuyRatioPlotter.testMergeAtm" />
-      <item itemvalue="Python tests.Nosetests for analyzerTest.TestSellBuyRatioPlotter.testPlotEtfRatio" />
-      <item itemvalue="Python tests.Nosetests for analyzerTest.TestQvixPlotter.testAdd50etfParkinson" />
+      <item itemvalue="Python tests.Nosetests for analyzerTest.TestSellBuyRatioPlotter.testGetAtmAlpha" />
+      <item itemvalue="Python tests.Nosetests for analyzerTest.TestSellBuyRatioPlotter.testPlotAtmAlpha" />
+      <item itemvalue="Python tests.Nosetests for analyzerTest.TestSellBuyRatioPlotter.testGetAtmReturnByRange" />
+      <item itemvalue="Python tests.Nosetests for analyzerTest.TestSellBuyRatioPlotter.testStrategyAtmLastTradeDays" />
     </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Python tests.Nosetests for analyzerTest.TestQvixPlotter.testPlotVolDiff" />
-        <item itemvalue="Python tests.Nosetests for analyzerTest.TestQvixPlotter.testAdd50etfParkinson" />
-        <item itemvalue="Python tests.Nosetests for analyzerTest.TestQvixPlotter.testAdd50etf" />
-        <item itemvalue="Python tests.Nosetests for analyzerTest.TestSellBuyRatioPlotter.testPlotEtfRatio" />
-        <item itemvalue="Python tests.Nosetests for analyzerTest.TestSellBuyRatioPlotter.testMergeAtm" />
+        <item itemvalue="Python tests.Nosetests for analyzerTest.TestSellBuyRatioPlotter.testPlotAtmAlpha" />
+        <item itemvalue="Python tests.Nosetests for analyzerTest.TestSellBuyRatioPlotter.testGetAtmAlpha" />
+        <item itemvalue="Python.analyze" />
+        <item itemvalue="Python tests.Nosetests for analyzerTest.TestSellBuyRatioPlotter.testStrategyAtmLastTradeDays" />
+        <item itemvalue="Python tests.Nosetests for analyzerTest.TestSellBuyRatioPlotter.testGetAtmReturnByRange" />
       </list>
     </recent_temporary>
   </component>
@@ -413,54 +427,54 @@
     <servers />
   </component>
   <component name="TestHistory">
-    <history-entry file="Nosetests_for_analyzerTest_TestQvixPlotter_testPlotVolDiff - 2019.01.31 at 00h 02m 58s.xml">
-      <configuration name="Nosetests for analyzerTest.TestQvixPlotter.testPlotVolDiff" configurationId="tests" />
+    <history-entry file="Nosetests_for_analyzerTest_TestSellBuyRatioPlotter_testStrategyAtmLastTradeDays - 2019.02.24 at 17h 30m 30s.xml">
+      <configuration name="Nosetests for analyzerTest.TestSellBuyRatioPlotter.testStrategyAtmLastTradeDays" configurationId="tests" />
     </history-entry>
-    <history-entry file="Nosetests_for_analyzerTest_TestQvixPlotter_testPlotVolDiff - 2019.01.31 at 00h 05m 18s.xml">
-      <configuration name="Nosetests for analyzerTest.TestQvixPlotter.testPlotVolDiff" configurationId="tests" />
+    <history-entry file="Nosetests_for_analyzerTest_TestSellBuyRatioPlotter_testStrategyAtmLastTradeDays - 2019.02.24 at 17h 32m 31s.xml">
+      <configuration name="Nosetests for analyzerTest.TestSellBuyRatioPlotter.testStrategyAtmLastTradeDays" configurationId="tests" />
     </history-entry>
-    <history-entry file="Nosetests_for_analyzerTest_TestQvixPlotter_testPlotVolDiff - 2019.01.31 at 18h 53m 51s.xml">
-      <configuration name="Nosetests for analyzerTest.TestQvixPlotter.testPlotVolDiff" configurationId="tests" />
+    <history-entry file="Nosetests_for_analyzerTest_TestSellBuyRatioPlotter_testStrategyAtmLastTradeDays - 2019.02.24 at 17h 32m 50s.xml">
+      <configuration name="Nosetests for analyzerTest.TestSellBuyRatioPlotter.testStrategyAtmLastTradeDays" configurationId="tests" />
     </history-entry>
-    <history-entry file="Nosetests_for_analyzerTest_TestQvixPlotter_testPlotVolDiff - 2019.01.31 at 18h 54m 39s.xml">
-      <configuration name="Nosetests for analyzerTest.TestQvixPlotter.testPlotVolDiff" configurationId="tests" />
+    <history-entry file="Nosetests_for_analyzerTest_TestSellBuyRatioPlotter_testStrategyAtmLastTradeDays - 2019.02.24 at 17h 36m 55s.xml">
+      <configuration name="Nosetests for analyzerTest.TestSellBuyRatioPlotter.testStrategyAtmLastTradeDays" configurationId="tests" />
     </history-entry>
-    <history-entry file="Nosetests_for_analyzerTest_TestQvixPlotter_testPlotVolDiff - 2019.01.31 at 18h 56m 36s.xml">
-      <configuration name="Nosetests for analyzerTest.TestQvixPlotter.testPlotVolDiff" configurationId="tests" />
+    <history-entry file="Nosetests_for_analyzerTest_TestSellBuyRatioPlotter_testStrategyAtmLastTradeDays - 2019.02.24 at 17h 40m 54s.xml">
+      <configuration name="Nosetests for analyzerTest.TestSellBuyRatioPlotter.testStrategyAtmLastTradeDays" configurationId="tests" />
     </history-entry>
-    <history-entry file="Nosetests_for_analyzerTest_TestSellBuyRatioPlotter_testMergeAtm - 2019.02.10 at 19h 37m 48s.xml">
-      <configuration name="Nosetests for analyzerTest.TestSellBuyRatioPlotter.testMergeAtm" configurationId="tests" />
+    <history-entry file="Nosetests_for_analyzerTest_TestSellBuyRatioPlotter_testStrategyAtmLastTradeDays - 2019.02.24 at 17h 45m 48s.xml">
+      <configuration name="Nosetests for analyzerTest.TestSellBuyRatioPlotter.testStrategyAtmLastTradeDays" configurationId="tests" />
     </history-entry>
-    <history-entry file="Nosetests_for_analyzerTest_TestSellBuyRatioPlotter_testPlotEtfRatio - 2019.02.10 at 19h 38m 33s.xml">
-      <configuration name="Nosetests for analyzerTest.TestSellBuyRatioPlotter.testPlotEtfRatio" configurationId="tests" />
+    <history-entry file="Nosetests_for_analyzerTest_TestSellBuyRatioPlotter_testStrategyAtmLastTradeDays - 2019.02.24 at 17h 47m 50s.xml">
+      <configuration name="Nosetests for analyzerTest.TestSellBuyRatioPlotter.testStrategyAtmLastTradeDays" configurationId="tests" />
     </history-entry>
-    <history-entry file="Nosetests_for_analyzerTest_TestQvixPlotter_testAdd50etf - 2019.02.20 at 18h 57m 14s.xml">
-      <configuration name="Nosetests for analyzerTest.TestQvixPlotter.testAdd50etf" configurationId="tests" />
+    <history-entry file="Nosetests_for_analyzerTest_TestSellBuyRatioPlotter_testStrategyAtmLastTradeDays - 2019.02.24 at 17h 52m 23s.xml">
+      <configuration name="Nosetests for analyzerTest.TestSellBuyRatioPlotter.testStrategyAtmLastTradeDays" configurationId="tests" />
     </history-entry>
-    <history-entry file="Nosetests_for_analyzerTest_TestQvixPlotter_testAdd50etfParkinson - 2019.02.20 at 20h 12m 17s.xml">
-      <configuration name="Nosetests for analyzerTest.TestQvixPlotter.testAdd50etfParkinson" configurationId="tests" />
+    <history-entry file="Nosetests_for_analyzerTest_TestSellBuyRatioPlotter_testGetAtmAlpha - 2019.02.24 at 20h 00m 42s.xml">
+      <configuration name="Nosetests for analyzerTest.TestSellBuyRatioPlotter.testGetAtmAlpha" configurationId="tests" />
     </history-entry>
-    <history-entry file="Nosetests_for_analyzerTest_TestQvixPlotter_testPlotVolDiff - 2019.02.20 at 20h 17m 23s.xml">
-      <configuration name="Nosetests for analyzerTest.TestQvixPlotter.testPlotVolDiff" configurationId="tests" />
+    <history-entry file="Nosetests_for_analyzerTest_TestSellBuyRatioPlotter_testPlotAtmAlpha - 2019.02.24 at 20h 05m 54s.xml">
+      <configuration name="Nosetests for analyzerTest.TestSellBuyRatioPlotter.testPlotAtmAlpha" configurationId="tests" />
     </history-entry>
   </component>
   <component name="ToolWindowManager">
     <frame x="1912" y="-8" width="1936" height="1056" extended-state="6" />
     <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.1512118" />
-      <window_info id="Structure" order="1" weight="0.25" />
+      <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.1512118" />
+      <window_info id="Structure" order="1" weight="0.18598525" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" weight="0.3275488" />
-      <window_info anchor="bottom" id="Run" order="2" weight="0.3275488" />
-      <window_info active="true" anchor="bottom" id="Debug" order="3" visible="true" weight="0.36225596" />
+      <window_info anchor="bottom" id="Run" order="2" weight="0.18872017" />
+      <window_info anchor="bottom" id="Debug" order="3" weight="0.47071582" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
       <window_info anchor="bottom" id="TODO" order="6" />
       <window_info anchor="bottom" id="Version Control" order="7" weight="0.3275488" />
       <window_info anchor="bottom" id="Terminal" order="8" weight="0.3275488" />
-      <window_info anchor="bottom" id="Python Console" order="9" sideWeight="0.4993395" weight="0.28850326" />
+      <window_info anchor="bottom" id="Python Console" order="9" sideWeight="0.4993395" weight="0.318872" />
       <window_info anchor="bottom" id="Event Log" order="10" sideWeight="0.5006605" side_tool="true" weight="0.48300284" />
       <window_info anchor="right" id="Commander" order="0" weight="0.4" />
       <window_info anchor="right" id="Ant Build" order="1" weight="0.25" />
@@ -646,6 +660,27 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/easeData/collector.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="833">
+          <caret line="324" column="47" selection-start-line="324" selection-start-column="47" selection-end-line="324" selection-end-column="47" />
+          <folding>
+            <element signature="e#16#25#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/test/analyzerTest.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="2860">
+          <caret line="196" column="19" selection-start-line="196" selection-start-column="19" selection-end-line="196" selection-end-column="19" />
+          <folding>
+            <element signature="e#16#31#0" expanded="true" />
+            <element signature="e#422#2078#0" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/easeData/base.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="260">
@@ -655,15 +690,32 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/test/collectorTest.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="832">
-          <caret line="101" column="19" selection-start-line="101" selection-start-column="19" selection-end-line="101" selection-end-column="19" />
+        <state relative-caret-position="1660">
+          <caret line="89" column="45" selection-start-line="89" selection-start-column="45" selection-end-line="89" selection-end-column="45" />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/easeData/collector.py">
+    <entry file="file://$PROJECT_DIR$/easeData/analyze.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="566">
-          <caret line="297" column="30" selection-start-line="297" selection-start-column="30" selection-end-line="297" selection-end-column="30" />
+        <state relative-caret-position="18260">
+          <caret line="935" selection-start-line="935" selection-end-line="935" />
+          <folding>
+            <element signature="e#16#34#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$APPLICATION_HOME_DIR$/helpers/pydev/_pydev_comm/server.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="580">
+          <caret line="33" selection-start-line="33" selection-end-line="33" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/easeData/functions.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="80">
+          <caret line="9" selection-start-line="9" selection-end-line="9" />
           <folding>
             <element signature="e#16#25#0" expanded="true" />
           </folding>
@@ -672,39 +724,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/example/optionDailyTask.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="445">
-          <caret line="38" column="25" lean-forward="true" selection-start-line="38" selection-start-column="25" selection-end-line="38" selection-end-column="25" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/easeData/analyze.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="706">
-          <caret line="1326" column="29" lean-forward="true" selection-start-line="1326" selection-start-column="29" selection-end-line="1326" selection-end-column="29" />
-          <folding>
-            <element signature="e#16#34#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/easeData/functions.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="180">
-          <caret line="9" lean-forward="true" selection-start-line="9" selection-end-line="9" />
-          <folding>
-            <element signature="e#16#25#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/test/analyzerTest.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="298">
-          <caret line="245" column="18" selection-start-line="245" selection-start-column="18" selection-end-line="245" selection-end-column="18" />
-          <folding>
-            <element signature="e#16#31#0" expanded="true" />
-            <element signature="e#422#2078#0" />
-          </folding>
+        <state relative-caret-position="472">
+          <caret line="63" lean-forward="true" selection-start-line="63" selection-end-line="63" />
         </state>
       </provider>
     </entry>

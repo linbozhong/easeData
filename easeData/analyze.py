@@ -6,10 +6,12 @@ import os
 import pymongo
 import matplotlib.pyplot as plt
 import seaborn as sns
-import tushare as ts
+from copy import copy
 from datetime import datetime, timedelta
 from collections import OrderedDict
 from dateutil.relativedelta import relativedelta
+
+import tushare as ts
 from jqdatasdk import opt, query
 
 from pyecharts import Line, Kline, Bar
@@ -682,9 +684,9 @@ class SellBuyRatioPlotter(LoggerWrapper):
             self.contractTypeDict = df['contract_type'].to_dict()
         return self.contractTypeDict.get(code, None)
 
-    def getNearbyContract(self, fp):
+    def getNearbyContract(self, fp, keepCurrent=False):
         """
-        选出最近月合约的数据，如果距离到期日不足7日，则选出次近月的数据。
+        从每日期权价格表中筛选出当月合约的数据，如果距离到期日不足7日，则选出下月的数据。
         :param fp: filePath
                 某个交易日的所有期权合约日行情数据
         :return: pd.DataFrame
@@ -706,7 +708,7 @@ class SellBuyRatioPlotter(LoggerWrapper):
         date = strToDate(df_current['date'].iloc[0])
         lastDate = strToDate(df_current['last_trade_date'].iloc[0])
 
-        if lastDate - date > timedelta(days=7):
+        if lastDate - date > timedelta(days=7) or keepCurrent is True:
             resDf = df_current
         else:
             df_next = df[df.month == monthList[1]]
@@ -783,28 +785,22 @@ class SellBuyRatioPlotter(LoggerWrapper):
     def setAtmEnd(self, date):
         self.atmEnd = date
 
-    def getAtmPriceCombineByDate(self, fp):
+    def getAtmContract(self, fp, keepCurrent=False):
         """
-        获取某个交易日的平值期权价合分钟数据。
+        获取某个交易日的平值期权合约数据。
         :param fp: 日行情数据csv文件路径
-        :return: tuple(string, pd.Series)
+        :return: pd.DataFrame
         """
-        self.info(u'获取单日价和数据:{}'.format(os.path.basename(fp)))
+        self.info(u'获取当日平值期权:{}'.format(os.path.basename(fp)))
 
-        df = self.getNearbyContract(fp)
-        date = strToDate(df['date'].iloc[0])
-        month = df['month'].iloc[0]
+        df = self.getNearbyContract(fp, keepCurrent)
+        df['strikePrice'] = df['trading_code'].map(lambda x: int(x[-4:]))  # 提取行权价
+        df['isHasM'] = df['trading_code'].map(lambda x: x[11] == 'M')
+        if df['isHasM'].any():
+            mask = df['trading_code'].map(lambda x: x[11] == 'M')  # 如果有存在M的合约，就过滤掉带A的合约
+            df = df[mask]
 
-        # 提取行权价
-        getStrike = lambda x: int(x[-4:])
-        df['strikePrice'] = df['trading_code'].map(getStrike)
-
-        # 过滤掉带A的合约
-        func = lambda x: x[11] == 'M'
-        mask = df['trading_code'].map(func)
-        df = df[mask]
-
-        # 按行权价分组，并计算认购和认购的权利金价差，存入字典
+        # 按行权价分组，并计算认购和认购的权利金价差，存入列表，通过排序得出平值期权
         grouped = df.groupby('strikePrice')
         groupedDict = dict(list(grouped))
         spreadList = []
@@ -816,10 +812,216 @@ class SellBuyRatioPlotter(LoggerWrapper):
 
         # 获取平值卖购和卖沽的价和数据
         atmStrike = spreadList[0][0]  # 取平值期权的行权价
-        atmDf = groupedDict.get(atmStrike)
+        atmDf = groupedDict.get(atmStrike)  # 获取保存平值期权两个合约的dataframe
+        return atmDf
+
+    def getAtmAlphaByDate(self, fp):
+        """
+        获取当日平值期权沽、购的alpha（theta/gamma)
+        :param fp:
+        :return: tuple
+            eg. ('2019-01-03', {'C': 0.2311, 'P': 0.2145})
+        """
+        self.info(u'获取单日平值期权Alpha:{}'.format(os.path.basename(fp)))
+
+        df = self.getAtmContract(fp)
+        df['contract_type'] = df['trading_code'].map(lambda x: 'C' if 'C' in x else 'P')
+        date = strToDate(df['date'].iloc[0])
+
+        alphaDict = {}
+        for idx, series in df.iterrows():
+            code = series['code']
+            contractType = series['contract_type']
+            db = opt.OPT_RISK_INDICATOR
+            q = query(db).filter(db.code == code, db.date == date)
+            df = self.jqsdk.run_query(q)
+            alphaDict[contractType] = roundFloat(abs(df.iloc[0]['theta'] / df.iloc[0]['gamma']), 4)
+
+        return date, alphaDict
+
+    def getAtmAlphaByRange(self, start, end):
+        """
+        取某个日期区间的平值期权组的alpha数据。
+        :param start: string
+        :param end: string
+        :return: pd.DataFrame
+        """
+        fps = self.getFpsByDateRange(start, end)
+        resList = [self.getAtmAlphaByDate(fp) for fp in fps]
+
+        data = {date: [alphaDict['C'], alphaDict['P']] for (date, alphaDict) in resList}
+        df = pd.DataFrame.from_dict(data=data, orient='index', columns=['Call', 'Put'])
+        df.sort_index(inplace=True)
+        return df
+
+    def getAtmAlpha(self):
+        """
+        获取从2015-02-09以来的平值期权alpha数据。
+        :return: pd.DataFrame
+        """
+        start = '2015-02-09'
+        filename = 'atm_alpha.csv'
+        path = os.path.join(self.jqsdk.getPricePath(OPTION, STUDY_DAILY), filename)
+
+        today = self.jqsdk.today
+        if not os.path.exists(path):
+            df = self.getAtmAlphaByRange(start=start, end=dateToStr(today))
+            df.to_csv(path, encoding='utf-8-sig')
+        else:
+            df = pd.read_csv(path, index_col=0)
+            lastDay = strToDate(df.index.values[-1])
+            newStart = lastDay + timedelta(days=1)
+            if newStart > today - timedelta(days=1):
+                self.info(u'{}'.format(FILE_IS_NEWEST))
+            else:
+                df_new = self.getAtmAlphaByRange(start=dateToStr(newStart), end=dateToStr(today - timedelta(days=1)))
+                df_new.index = df_new.index.map(dateToStr)
+                df = pd.concat([df, df_new])
+                df.to_csv(path, encoding='utf-8-sig')
+
+        # end = df.index[-1]
+        # underlyingPrice = self.jqsdk.get_price(self.underlyingSymbol, start_date=start, end_date=end)
+        # underlyingPrice.index = underlyingPrice.index.map(dateToStr)
+        # close = underlyingPrice['close']
+        # df[self.underlyingSymbol] = close
+
+        qvixPlotter = QvixPlotter()
+        qvixDf = qvixPlotter.getCsvData()
+        df['qvix'] = qvixDf['close']
+        return df
+
+    def plotAtmAlpha(self):
+        """
+        绘制平值期权alpha走势图。
+        :return:
+        """
+        width = 1500
+        height = 600
+        displayItem = ['Call', 'Put']
+
+        nameDict = {
+            'Call': u'平值认购',
+            'Put': u'平值认沽',
+            'qvix': u'Qvix波动率'
+        }
+
+        zoomDict = {
+            'is_datazoom_show': True,
+            'datazoom_type': 'both',
+            'line_width': 2,
+            'yaxis_name_size': 14,
+            'yaxis_name_gap': 35,
+            'tooltip_trigger': 'axis',
+            'tooltip_axispointer_type': 'cross'
+        }
+
+        df = self.getAtmAlpha()
+        xtickLabels = df.index.tolist()
+
+        page = Page()
+        overlap = Overlap(width=width, height=height)
+
+        # 对比组图
+        multiLine = Line(u'平值期权alpha走势图')
+        etfLine = Line(u'波动率指数与平值期权Alpha')
+        for name, series in df.iteritems():
+            if name == 'qvix':
+                etfLine.add(nameDict[name], xtickLabels, series.values.tolist(), yaxis_min=10, yaxis_max=50,
+                            yaxis_force_interval=5, yaxis_name=u'Qvix指数', **zoomDict)
+            elif name in displayItem:
+                multiLine.add(nameDict[name], xtickLabels, series.values.tolist(),
+                              yaxis_name=u'沽购Alpha', is_splitline_show=False, yaxis_min=0, yaxis_max=0.8,
+                              yaxis_force_interval=0.08, mark_point=["max", "min"], mark_point_symbolsize=70,
+                              **zoomDict)
+
+        overlap.add(etfLine)
+        overlap.add(multiLine, yaxis_index=1, is_add_yaxis=True)
+        page.add(overlap)
+
+        outputDir = self.jqsdk.getResearchPath(OPTION, 'dailytask')
+        page.render(os.path.join(outputDir, 'atm_alpha.html'))
+
+    def getAtmReturnByRange(self, start, end):
+        """
+        获取某个平值期权跨式组合的区间收益。
+        :param start: string. '%Y-%m-%d'
+                开始交易日,
+        :param end: string. '%Y-%m-%d'
+                结束交易日
+        :return:
+        """
+        startFn = 'option_daily_{}.csv'.format(start)
+        startFp = os.path.join(self.jqsdk.getPricePath('option', 'daily'), startFn)
+        print(startFp)
+        atmDf = self.getAtmContract(startFp, keepCurrent=True)
+
+        entry = exit_ = 0
+        for idx, series in atmDf.iterrows():
+            print(series['code'])
+            print(series['trading_code'])
+            # 今日确定平值的期权，从下一个交易日开始入场
+            nextTradeDay = self.jqsdk.getNextTradeDay(strToDate(start))
+            df = self.jqsdk.get_price(series['code'], nextTradeDay, strToDate(end))
+            # print(df)
+            entry += df.close[0]
+            exit_ += df.close[-1]
+        return entry, exit_
+
+    def strategyAtmLastTradeDays(self, n=5, startFrom=1501):
+        """
+        持有跨式平值期权最后n个交易日的收益率
+        :param n: int
+        :param startFrom: int
+                开始计算的月份, 1501表示2015年1月份
+        :return:
+        """
+        def getPreTradeDate(date):
+            preDate = strToDate(date) - timedelta(days=n)
+            return dateToStr(self.jqsdk.getPreTradeDay(preDate))
+
+        contractDf = copy(self.getContractInfo())   # 避免修改操作影响到原缓存文件
+        contractDf.drop_duplicates(subset='last_trade_date', inplace=True)
+        contractDf['month'] = contractDf['trading_code'].map(lambda tradingCode: int(tradingCode[7: 11]))
+        contractDf.sort_values(by='month', inplace=True)
+        contractDf['begin_date'] = contractDf['last_trade_date'].map(getPreTradeDate)
+        contractDf = contractDf[contractDf.month >= startFrom]
+        # contractDf.set_index('month', inplace=True)
+
+        recList = []
+        for idx, series in contractDf.iterrows():
+            begin = series['begin_date']
+            end = series['last_trade_date']
+            if strToDate(end) >= self.jqsdk.today:
+                continue
+
+            d = OrderedDict()
+            d['month'] = series['month']
+            d['begin_date'] = begin
+            d['last_trade_date'] = end
+            entry, exit_ = self.getAtmReturnByRange(begin, end)
+            d['entry'], d['exit'] = roundFloat(entry*10000, 1), roundFloat(exit_*10000, 1)
+            recList.append(d)
+        df = pd.DataFrame(recList)
+        df['return'] = (df['entry'] - df['exit']).map(lambda x: round(x, 1))
+        df['returnRate'] = (df['return'] / df['entry']).map(lambda x: round(x, 3))
+        return df
+
+    def getAtmPriceCombineByDate(self, fp):
+        """
+        获取某个交易日的平值期权价和分钟数据。
+        :param fp: 日行情数据csv文件路径
+        :return: tuple(string, pd.Series)
+        """
+        self.info(u'获取单日价和数据:{}'.format(os.path.basename(fp)))
+
+        df = self.getAtmContract(fp)
+        date = strToDate(df['date'].iloc[0])
+        month = df['month'].iloc[0]
+        atmStrike = df['strikePrice'].iloc[0]
         label = '{}-{}'.format(month, atmStrike)
+
         closeList = []
-        for code in atmDf.code.tolist():
+        for code in df.code.tolist():
             # 今日确定平值的期权，取下一个交易日的数据
             nextTradeDay = self.jqsdk.getNextTradeDay(date)
             minuteDf = self.jqsdk.get_price(code, nextTradeDay, nextTradeDay + timedelta(days=1), '1m')
@@ -853,9 +1055,25 @@ class SellBuyRatioPlotter(LoggerWrapper):
         dateRange = preTradeDays[-nDays:]
         return dateToStr(dateRange[0]), dateToStr(dateRange[-1])
 
+    def getFpsByDateRange(self, start, end):
+        """
+        获取某个日期区间的期权日行情文件路径列表
+        :param start: string
+        :param end: string
+        :return: list(fp)
+        """
+        tradeDays = self.jqsdk.getTradeDayCal()
+        start = strToDate(start).date()
+        end = strToDate(end).date()
+        dateRange = tradeDays[(tradeDays >= start) & (tradeDays <= end)]
+
+        fnames = ['option_daily_{}.csv'.format(dateToStr(date)) for date in dateRange]
+        fps = [os.path.join(self.jqsdk.getPricePath('option', 'daily'), filename) for filename in fnames]
+        return fps
+
     def getAtmPriceCombineByRange(self, start, end):
         """
-        取某个日期区间的平值期权组的价合数据。
+        取某个日期区间的平值期权组的价和数据。
         :param start: string
         :param end: string
         :return: list[tuple(string, pd.Series)]
@@ -873,7 +1091,7 @@ class SellBuyRatioPlotter(LoggerWrapper):
 
     def mergeAtmPriceCombine(self):
         """
-        拼接每日的平值期权价合数据。
+        拼接每日的平值期权价合数据。以匹配绘图模块。
         同一合约的纵向拼接，不同合约的横向拼接。
         :return: pd.DataFrame
         """
@@ -891,7 +1109,7 @@ class SellBuyRatioPlotter(LoggerWrapper):
         data = []
         for label, seriesList in merger.items():
             if len(seriesList) > 1:
-                df = pd.concat(seriesList)  # 同一行权价纵向连接
+                df = pd.concat(seriesList)  # 同一行权价在多个交易日成为平值的，先纵向连接
                 data.append(df)
             else:
                 data.append(seriesList[0])  # 某个行权价仅平值一天，只有一个数据
@@ -956,9 +1174,6 @@ class SellBuyRatioPlotter(LoggerWrapper):
             line.add(colName, idx, value, is_datazoom_show=True, datazoom_type='both')
             overlap.add(line)
         overlap.render(getTestPath('duancengMinute.html'))
-
-    def getCallAddPutPrice(self):
-        pass
 
     def calcRatioByDate(self, fp):
         """
@@ -1225,6 +1440,7 @@ class QvixPlotter(LoggerWrapper):
         :param n: int
         :return: pd.Series
         """
+
         def parkinson(values):
             return np.sqrt(sum(values ** 2 / (4 * np.log(2))) / len(values))
 
@@ -1322,7 +1538,7 @@ class QvixPlotter(LoggerWrapper):
         for lineName in [hv, iv, parkinson]:
             line = Line(title)
             line.add(lineName, dateList, data[lineName].tolist(),
-                     tooltip_trigger='axis', tooltip_axispointer_type='cross', mark_line=['average'],
+                     tooltip_trigger='axis', tooltip_axispointer_type='cross',
                      **lineStyle)
             overlap.add(line)
 
@@ -1477,3 +1693,15 @@ def line_tooltip_formatter(params):
 
 def yaxis_formatter(params):
     return params.se + ' percent'
+
+
+
+if __name__ == '__main__':
+    import pandas as pd
+
+    cs01 = pd.DataFrame([1, 2, 3], index=['a', 'b', 'c'])
+    cs02 = pd.DataFrame([5, 6, 7], index=['b', 'c', 'd'], columns=['city'])
+    s02 = cs02['city']
+    cs01['kity'] = s02
+    # cs03 = pd.concat([cs01, s02], axis=1, sort=False)
+    print(cs01)
