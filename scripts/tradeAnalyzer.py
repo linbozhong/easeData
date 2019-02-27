@@ -135,12 +135,12 @@ def read_csv(filename):
     output_columns = [TA_TRADING_DATETIME, TA_EXCHANGE_HIST, TA_CONTRACT_CODE_HIST, TA_CONTRACT_NAME, TA_DIRECTION,
                       TA_OFFSET, TA_TRADING_PRICE, TA_TRADING_VOLUME, TA_TRADING_TURNOVER, TA_COVERED,
                       TA_TRADING_ID_HIST]
-    base_dir = os.getcwd()
-    fp = os.path.join(base_dir, filename)
+    # base_dir = os.getcwd()
+    fp = os.path.join(source, filename)
     df = pd.read_csv(fp, encoding=TA_CSV_CODING)
 
     # 读取当日成交文件
-    today_trade_file = os.path.join(base_dir, '{}_today.csv'.format(filename.split('.')[0]))
+    today_trade_file = os.path.join(source, '{}_today.csv'.format(filename.split('.')[0]))
     if os.path.exists(today_trade_file):
         df_today = pd.read_csv(today_trade_file, encoding=TA_CSV_CODING)
         df_today.rename(columns=change_name_map, inplace=True)  # 更改列名
