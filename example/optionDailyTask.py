@@ -12,7 +12,7 @@ def updateData():
 
 def plotPosition():
     print(u"绘制持仓量走势..")
-    mission = ['1902', '1903', '1906', '1909']
+    mission = ['1903', '1904', '1906', '1909']
     plotter = PositionDiffPlotter()
     for m in mission:
         plotter.setQueryMonth(m)

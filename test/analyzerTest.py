@@ -132,7 +132,7 @@ class TestSellBuyRatioPlotter(unittest.TestCase):
         self.atmStart = '2019-01-07'
         self.atmEnd = '2019-01-29'
 
-        filename = 'option_daily_2019-02-21.csv'
+        filename = 'option_daily_2019-02-27.csv'
         self.fp = os.path.join(self.obj.jqsdk.getPricePath('option', 'daily'), filename)
 
     def testGetContractInfo(self):

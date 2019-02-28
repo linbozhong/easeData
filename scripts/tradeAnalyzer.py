@@ -5,10 +5,13 @@ import codecs
 import json
 import pandas as pd
 from datetime import datetime
+from pytdx.exhq import TdxExHq_API, TDXParams
 
 test_file_name = 'zxjt_zmv.csv'
 test_file = os.path.join(os.getcwd(), 'zxjt_zmv.csv')
 config_file = os.path.join(os.getcwd(), 'config.json')
+
+PYTDX_EXHQ_SERVER = '119.23.127.172'
 
 TA_DIR_SOURCE = 'source'
 TA_DIR_OUTPUT = 'output'
@@ -95,6 +98,23 @@ def load_setting(filename, encoding='utf-8', **kwargs):
     return setting
 
 
+def get_option_daily(code_list):
+    """
+    从pytdx模块中获取期权价格。
+    :param code_list:
+    :return:
+    """
+    api = TdxExHq_API()
+    df_list = []
+    with api.connect(ip=PYTDX_EXHQ_SERVER):
+        for code in code_list:
+            df = api.to_df(api.get_instrument_bars(TDXParams.KLINE_TYPE_DAILY, 8, code, 0, 100))
+            df_list.append(df)
+    df_merge = pd.concat(df_list)
+    df_merge.to_csv('pytdx_price.csv', encoding=TA_CSV_CODING)
+    return df_merge
+
+
 def analyze_trade(filename):
     """
     分析单个账户成交记录。
@@ -106,24 +126,30 @@ def analyze_trade(filename):
     add_commission(df, setting)
     calculate_settlement(df)
     # df.to_csv('test2.csv', encoding=TA_CSV_CODING)
-    begin = df[TA_TRADING_DATETIME].iloc[0].strftime('%Y-%m-%d')
-    end = df[TA_TRADING_DATETIME].iloc[-1].strftime('%Y-%m-%d')
 
+    # 获取期权日线价格
+    # all_codes = df[TA_CONTRACT_CODE_HIST].drop_duplicates().values
+    # print(all_codes)
+    # option_kline_df = get_option_daily(all_codes)
+
+    # 计算每个合约的盈亏情况
     grouped = df.groupby(by=TA_CONTRACT_CODE_HIST)
     grouped_dict = dict(list(grouped))
-    # print(grouped_dict.keys())
-
     res_list = []
     for contract_code in setting['contract_close'].keys():
         res_dict = calculate_contract_return(grouped_dict, contract_code, setting)
         res_list.append(res_dict)
 
+    # 汇总输出到csv文件
+    begin = df[TA_TRADING_DATETIME].iloc[0].strftime('%Y-%m-%d')
+    end = df[TA_TRADING_DATETIME].iloc[-1].strftime('%Y-%m-%d')
     column_order = [TA_ACCOUNT_NAME, TA_TRADING_FIRST_TIME, TA_TRADING_LAST_TIME, TA_CONTRACT_CODE_HIST,
                     TA_CONTRACT_NAME, TA_TRADING_COMMISSION, TA_TRADING_RETURN]
     res_df = pd.DataFrame(res_list)
     res_df = res_df[column_order]
     fp = os.path.join(output, u'{}_盈亏汇总_{}-{}.csv'.format(setting['name'], begin, end))
-    res_df.to_csv(fp, encoding=TA_CSV_CODING)
+    res_df.to_csv(fp, encoding=TA_CSV_CODING, index=False)
+    return res_df
 
 
 def read_csv(filename):
@@ -170,8 +196,13 @@ def load_account_setting(account_name):
     """
     setting = load_setting(config_file)
     contracts_list = setting[account_name].get('contracts')
+    # 如果账户没有单独设置，则采用通用设置
     if not contracts_list:
         contracts_list = setting['general_contracts']
+        setting[account_name]['contracts'] = contracts_list
+    if setting[account_name].get('calculate_all') is None:
+        setting[account_name]['calculate_all'] = setting['calculate_all']
+
     contracts_dict = {contract: setting['contract_close'][contract] for contract in contracts_list}
     setting[account_name]['contract_close'] = contracts_dict
     return setting[account_name]
@@ -215,7 +246,7 @@ def calculate_contract_return(grouped_dict, contract_code, setting):
     :param contract_code:
     :return:
     """
-    res_dict = {}
+    # 计算单合约盈亏
     df = grouped_dict[contract_code]
     open_volume = df[TA_TRADING_VOLUME].sum()
     if open_volume != 0:
@@ -235,11 +266,16 @@ def calculate_contract_return(grouped_dict, contract_code, setting):
         df[TA_TRADING_DATETIME].values[-1] = datetime.today().replace(hour=15, minute=0, second=0)
         df[TA_OFFSET].values[-1] = TA_OFFSET_OPEN_PROFIT
 
+    # 保存明细文件
     begin = df[TA_TRADING_DATETIME].iloc[0].strftime('%Y-%m-%d')
     end = df[TA_TRADING_DATETIME].iloc[-1].strftime('%Y-%m-%d')
-    fp = os.path.join(detail, u'{}_合约明细_{}_{}-{}.csv'.format(setting['name'], contract_code, begin, end))
-    df.to_csv(fp, encoding=TA_CSV_CODING)
+    df[TA_TRADING_DATETIME] = df[TA_TRADING_DATETIME].map(
+        lambda dt: datetime.strftime(dt, '%Y-%m-%d %H:%M:%S'))
+    fp = os.path.join(detail, u'{}_合约明细_{}_{}-{}.csv'.format(setting['name'], df[TA_CONTRACT_NAME].iloc[0], begin, end))
+    df.to_csv(fp, encoding=TA_CSV_CODING, index=False)
 
+    # 输出结果
+    res_dict = dict()
     res_dict[TA_ACCOUNT_NAME] = setting['name']
     res_dict[TA_TRADING_FIRST_TIME] = df[TA_TRADING_DATETIME].values[0]
     res_dict[TA_TRADING_LAST_TIME] = df[TA_TRADING_DATETIME].values[-1]
@@ -267,14 +303,15 @@ def main():
 
 
 if __name__ == '__main__':
-    print(os.getcwd())
-    s = load_setting(config_file)
-    print(s)
+    import sys
+
+    reload(sys)
+    sys.setdefaultencoding('utf-8')
 
     print(load_account_setting('zx_gwyh'))
+    print(load_account_setting('zxjt_zmv'))
     print(load_account_setting('dbzq_cs'))
 
     read_all_csv()
     # read_csv(test_file_name)
-    # d = {}
     # analyze_trade(test_file_name)

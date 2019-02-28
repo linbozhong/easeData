@@ -340,9 +340,9 @@ class PositionDiffPlotter(LoggerWrapper):
             2.5
         ]
         self.compExercisePrice = [
-            2.25,
-            2.3,
-            2.35,
+            2.7,
+            2.75,
+            2.8,
         ]
 
         self.red = '#c91818'
@@ -835,6 +835,7 @@ class SellBuyRatioPlotter(LoggerWrapper):
             db = opt.OPT_RISK_INDICATOR
             q = query(db).filter(db.code == code, db.date == date)
             df = self.jqsdk.run_query(q)
+            print(df)
             alphaDict[contractType] = roundFloat(abs(df.iloc[0]['theta'] / df.iloc[0]['gamma']), 4)
 
         return date, alphaDict
