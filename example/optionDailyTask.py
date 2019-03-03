@@ -46,6 +46,10 @@ def plotAtm():
     print(u"绘制平值期权Alpha..")
     plotter.plotAtmAlpha()
 
+    print(u"绘制50etf资金流向图..")
+    plotter.updateMoneyFlowOf50Etf()
+    plotter.plotMoneyFlowOf50Etf()
+
 
 def plotEtfRatio():
     print(u"绘制50etf成交量占比走势..")

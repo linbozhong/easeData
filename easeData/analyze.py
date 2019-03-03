@@ -9,7 +9,7 @@ import seaborn as sns
 from copy import copy
 from datetime import datetime, timedelta
 from collections import OrderedDict
-from dateutil.relativedelta import relativedelta
+from dateutil.relativedelta import relativedelta, FR
 
 import tushare as ts
 from jqdatasdk import opt, query
@@ -976,11 +976,12 @@ class SellBuyRatioPlotter(LoggerWrapper):
                 开始计算的月份, 1501表示2015年1月份
         :return:
         """
+
         def getPreTradeDate(date):
             preDate = strToDate(date) - timedelta(days=n)
             return dateToStr(self.jqsdk.getPreTradeDay(preDate))
 
-        contractDf = copy(self.getContractInfo())   # 避免修改操作影响到原缓存文件
+        contractDf = copy(self.getContractInfo())  # 避免修改操作影响到原缓存文件
         contractDf.drop_duplicates(subset='last_trade_date', inplace=True)
         contractDf['month'] = contractDf['trading_code'].map(lambda tradingCode: int(tradingCode[7: 11]))
         contractDf.sort_values(by='month', inplace=True)
@@ -1000,7 +1001,7 @@ class SellBuyRatioPlotter(LoggerWrapper):
             d['begin_date'] = begin
             d['last_trade_date'] = end
             entry, exit_ = self.getAtmReturnByRange(begin, end)
-            d['entry'], d['exit'] = roundFloat(entry*10000, 1), roundFloat(exit_*10000, 1)
+            d['entry'], d['exit'] = roundFloat(entry * 10000, 1), roundFloat(exit_ * 10000, 1)
             recList.append(d)
         df = pd.DataFrame(recList)
         df['return'] = (df['entry'] - df['exit']).map(lambda x: round(x, 1))
@@ -1344,6 +1345,147 @@ class SellBuyRatioPlotter(LoggerWrapper):
 
         outputDir = self.jqsdk.getResearchPath(OPTION, 'dailytask')
         page.render(os.path.join(outputDir, htmlName))
+
+    def get50etfAdjustDayList(self, start, end):
+        """
+        获取50etf样本股调整生效日期(6,12月第二个周五的下个交易日)的列表
+        :param start: datetime.datetime
+        :param end: datetime.datetime
+        :return: datetime.date
+        """
+        days = [start.date()]
+        for year in range(start.year, end.year + 1, 1):
+            for month in [6, 12]:
+                date = datetime(year, month, 1) + relativedelta(weekday=FR(2))
+                date = self.jqsdk.getNextTradeDay(date)
+                if start.date() <= date <= end.date():
+                    days.append(date)
+        days.append(end.date())
+        return days
+
+    def getMoneyFlowOf50EtfInPeriod(self, start, end):
+        """
+        获取50etf某个调整区间（在此区间，成分股不变）所有成分股的资金流向数据。
+        :param start: datetime.datetime
+        :param end: datetime.datetime
+        :return:
+        """
+        self.info(u'获取50etf资金流：{} to {}'.format(dateToStr(start), dateToStr(end)))
+        end = self.jqsdk.getPreTradeDay(end)
+        stocks = self.jqsdk.get_index_stocks(self.etfIdx, date=start)
+        df = self.jqsdk.get_money_flow(stocks, start_date=start, end_date=end)
+        return df
+
+    def getMoneyFlowOf50Etf(self, start, end):
+        """
+        获取某个时间段50etf所有成分股的资金流向数据。
+        :param start:
+        :param end:
+        :return:
+        """
+        days = [datetime(d.year, d.month, d.day) for d in self.get50etfAdjustDayList(start, end)]
+        periodList = []
+        for idx in range(0, len(days) - 1):
+            dStart = days[idx]
+            if idx + 1 < len(days) - 1:
+                # 如果不是整个大区间的最后一天，小区间的最后一天需要往前推一个交易日，避免获取重复一天的数据
+                dEnd = self.jqsdk.getPreTradeDay(days[idx + 1])
+                dEnd = datetime(dEnd.year, dEnd.month, dEnd.day)
+            else:
+                dEnd = days[idx + 1]
+            periodList.append((dStart, dEnd))
+        # print(periodList)
+
+        dfs = [self.getMoneyFlowOf50EtfInPeriod(*dateTuple) for dateTuple in periodList]
+        df_merge = pd.concat(dfs)
+        df_merge.date = df_merge.date.map(dateToStr)
+        path = os.path.join(self.jqsdk.getPricePath(OPTION, STUDY_DAILY), '50etf_money_flow.csv')
+        df_merge.to_csv(path)
+        return df_merge
+
+    def updateMoneyFlowOf50Etf(self):
+        """
+        更新50etf资金流量数据，要确保更新的起止日期是在成分股的一个调整区间之内，不能跨区间。
+        :return:
+        """
+        path = os.path.join(self.jqsdk.getPricePath(OPTION, STUDY_DAILY), '50etf_money_flow.csv')
+        if os.path.exists(path):
+            df = pd.read_csv(path, index_col=0)
+            lastDate = df.date.iloc[-1]
+            # print(lastDate, type(lastDate))
+            newStart = self.jqsdk.getNextTradeDay(strToDate(lastDate))
+            newStart = datetime(newStart.year, newStart.month, newStart.day)
+            if newStart > self.jqsdk.today:  # 如果新的开始日期大于今天
+                self.info(u'{}'.format(FILE_IS_NEWEST))
+            else:
+                dfNew = self.getMoneyFlowOf50EtfInPeriod(newStart, self.jqsdk.today)
+                dfNew.date = dfNew.date.map(dateToStr)
+                df = pd.concat([df, dfNew])
+                df.to_csv(path)
+        else:
+            self.info(u'找不到数据文件，请先获取。')
+
+    def plotMoneyFlowOf50Etf(self):
+        """
+        绘制50etf资金流向图表。
+        :return:
+        """
+        width = 1500
+        height = 600
+        displayItem = ['net_amount_main', 'net_amount_xl', 'net_amount_l']
+
+        nameDict = {'net_amount_main': u'主力净额',
+                    'net_amount_xl': u'超大单净额',
+                    'net_amount_l': u'大单净额',
+                    self.underlyingSymbol: u'50ETF收盘价'
+                    }
+
+        zoomDict = {
+            'is_datazoom_show': True,
+            'datazoom_type': 'both',
+            'line_width': 2,
+            'yaxis_name_size': 14,
+            'yaxis_name_gap': 35,
+            'tooltip_trigger': 'axis',
+            'tooltip_axispointer_type': 'cross'
+        }
+
+        path = os.path.join(self.jqsdk.getPricePath(OPTION, STUDY_DAILY), '50etf_money_flow.csv')
+        df = pd.read_csv(path, index_col=0)
+        df.set_index('date', inplace=True)
+        df = df[displayItem]
+        df = df.groupby(df.index).sum()
+        underlyingPrice = self.jqsdk.get_price(self.underlyingSymbol, start_date=df.index.values[0],
+                                               end_date=df.index.values[-1])
+        underlyingPrice.index = underlyingPrice.index.map(dateToStr)
+        df[self.underlyingSymbol] = underlyingPrice['close']
+        xtickLabels = df.index.tolist()
+        # print(df)
+
+        page = Page()
+        overlap = Overlap(width=width, height=height)
+
+        # 对比组图
+        bars = Bar(u'50etf资金流向图')
+        etfLine = Line(u'50etf资金流向图')
+        for name, series in df.iteritems():
+            if name == self.underlyingSymbol:
+                etfLine.add(nameDict[name], xtickLabels, series.values.tolist(),
+                            yaxis_min=1.8, yaxis_max=3.4, yaxis_force_interval=0.2,
+                            yaxis_name=u'50etf收盘价', is_splitline_show=False, **zoomDict)
+            elif name in displayItem:
+                bars.add(nameDict[name], xtickLabels,
+                         map(roundFloat, np.divide(series.values, 10000).tolist()),
+                         bar_category_gap='50%',
+                         yaxis_name=u'50etf资金流向（亿元）',
+                         mark_point_symbolsize=45, **zoomDict)
+
+        overlap.add(bars)
+        overlap.add(etfLine, yaxis_index=1, is_add_yaxis=True)
+        page.add(overlap)
+
+        outputDir = self.jqsdk.getResearchPath(OPTION, 'dailytask')
+        page.render(os.path.join(outputDir, '50etf_money_flow.html'))
 
 
 class QvixPlotter(LoggerWrapper):
@@ -1694,7 +1836,6 @@ def line_tooltip_formatter(params):
 
 def yaxis_formatter(params):
     return params.se + ' percent'
-
 
 
 if __name__ == '__main__':

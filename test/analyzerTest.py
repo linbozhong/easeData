@@ -245,6 +245,33 @@ class TestSellBuyRatioPlotter(unittest.TestCase):
         # self.obj.isOnlyNearby = False
         # self.obj.plotRatio()
 
+    def testGet50etfAdjustDayList(self):
+        d1 = datetime(2017, 1, 1)
+        d2 = datetime.today()
+        d3 = datetime(2019, 1, 1)
+        days = self.obj.get50etfAdjustDayList(d1, d3)
+        print(days)
+
+    def testGetMoneyFlowOf50EtfInPeriod(self):
+        d1 = datetime(2019, 2, 25)
+        d2 = datetime.today()
+        d3 = datetime(2019, 3, 1)
+        df = self.obj.getMoneyFlowOf50Etf(d1, d3)
+        df.to_csv(getTestPath('50etf_money_flow.csv'))
+
+    def testGetMoneyFlowOf50Etf(self):
+        d1 = datetime(2017, 1, 1)
+        d2 = datetime.today()
+        # d3 = datetime(2019, 3, 1)
+        df = self.obj.getMoneyFlowOf50Etf(d1, d2)
+        # df.to_csv(getTestPath('50etf_money_flow.csv'))
+
+    def testUpdateMoneyFlowOf50Etf(self):
+        self.obj.updateMoneyFlowOf50Etf()
+
+    def testPlotMoneyFlowOf50Etf(self):
+        self.obj.plotMoneyFlowOf50Etf()
+
 
 class TestQvixPlotter(unittest.TestCase):
     def setUp(self):
