@@ -5,6 +5,7 @@ import re
 import codecs
 import json
 from datetime import datetime
+from dateutil.relativedelta import relativedelta, FR
 from const import *
 
 
@@ -201,3 +202,15 @@ def parseFilename(filename):
                 包含文件名信息的列表
     """
     return re.split(r'[_.-]', filename)
+
+
+def getLastFriday(date=None):
+    """
+    获取上周五的日期
+    :return:
+    """
+    if date is None:
+        date = datetime.now()
+    n = 1 if date.weekday() < 4 else 2
+    lastFri = date + relativedelta(weekday=FR(-n))
+    return datetime(lastFri.year, lastFri.month, lastFri.day)

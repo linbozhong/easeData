@@ -8,7 +8,6 @@ from easeData.const import *
 # from easeData.database import MongoDbConnector, VnpyAdaptor
 from datetime import datetime
 
-
 # 创建聚宽收集器实例
 jqdataCollector = JQDataCollector()
 
@@ -17,7 +16,6 @@ rqdataCollector = RQDataCollector()
 
 # 创建jaqs收集器实例
 jaqsDataCollector = JaqsDataCollector()
-
 
 
 def printDict(dictData):
@@ -57,6 +55,10 @@ class TestJQDataCollector(unittest.TestCase):
         date = datetime(2019, 1, 1)
         print(self.obj.getNextTradeDay(date), type(self.obj.getNextTradeDay(date)))
         print(self.obj.getPreTradeDay(date), type(self.obj.getPreTradeDay(date)))
+        print("is Trade-day")
+        print(self.obj.isTradeDay(datetime(2019, 3, 10)))
+        print(self.obj.isTradeDay(datetime(2019, 3, 11)))
+
 
     def testGetFutureExchangeMap(self):
         print(self.obj.getFutureExchangeMap())
@@ -103,7 +105,6 @@ class TestJQDataCollector(unittest.TestCase):
         start = datetime(2019, 1, 1)
         self.obj.downloadAllOptionDaily(start)
         # self.obj.downloadAllOptionDaily()
-
 
     def testGetContinuousBarByMonth(self):
         self.obj.downloadContinuousBarByMonth('rb9999', 2018, 11)
@@ -355,6 +356,8 @@ class TestJaqsCollector(unittest.TestCase):
         print(self.obj.getPreTradeDay('20181009'))
         print(self.obj.getPreTradeDay('19901219'))
         print(self.obj.getPreTradeDay('19901221', nDays=10))
+
+
 
     def testDownloadBarByContract(self):
         # self.obj.downloadBarByContract('rb1810', '2018-07-01', '2018-07-15')

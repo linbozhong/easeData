@@ -66,6 +66,11 @@ class TestFunction(unittest.TestCase):
         print(fn.dateToStr(self.dt))
         print(fn.dateToDtStr(self.dt))
 
+    def testLastFri(self):
+        print(fn.getLastFriday())
+        print(fn.getLastFriday(datetime(2019, 3, 8)))
+        print(fn.getLastFriday(datetime(2019, 3, 9)))
+
 
 if __name__ == '__main__':
     unittest.main()

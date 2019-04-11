@@ -12,7 +12,7 @@ def updateData():
 
 def plotPosition():
     print(u"绘制持仓量走势..")
-    mission = ['1903', '1904', '1906', '1909']
+    mission = ['1904', '1905', '1906', '1909']
     plotter = PositionDiffPlotter()
     for m in mission:
         plotter.setQueryMonth(m)
@@ -40,15 +40,20 @@ def plotQvix():
 
 
 def plotAtm():
-    print(u"绘制平值期权走势..")
     plotter = SellBuyRatioPlotter()
-    plotter.plotAtmCombinePrice()
+
+    # print(u"绘制平值期权走势..")
+    # plotter.plotAtmCombinePrice()
+
+    print(u"绘制上周五平值期权本周走势图..")
+    plotter.plotOneWeekAtmPrice()
+
     print(u"绘制平值期权Alpha..")
     plotter.plotAtmAlpha()
 
-    print(u"绘制50etf资金流向图..")
-    plotter.updateMoneyFlowOf50Etf()
-    plotter.plotMoneyFlowOf50Etf()
+    # print(u"绘制50etf资金流向图..")
+    # plotter.updateMoneyFlowOf50Etf()
+    # plotter.plotMoneyFlowOf50Etf()
 
 
 def plotEtfRatio():

@@ -203,6 +203,12 @@ class TestSellBuyRatioPlotter(unittest.TestCase):
         reslist = self.obj.getAtmPriceCombineByRange(start, end)
         print(reslist)
 
+    def testGetOneWeekAtm(self):
+        self.obj.getOneWeekAtmPrice()
+
+    def testPlotOneWeekAtm(self):
+        self.obj.plotOneWeekAtmPrice()
+
     def testMergeAtm(self):
         # self.obj.setAtmStart(self.atmStart)
         # self.obj.setAtmEnd(self.atmEnd)

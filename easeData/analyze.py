@@ -7,8 +7,9 @@ import pymongo
 import matplotlib.pyplot as plt
 import seaborn as sns
 from copy import copy
-from datetime import datetime, timedelta
 from collections import OrderedDict
+
+from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta, FR
 
 import tushare as ts
@@ -20,7 +21,7 @@ from pyecharts import Page, Overlap
 from database import MongoDbConnector
 from base import LoggerWrapper
 from collector import JQDataCollector
-from functions import (strToDate, dateToStr, getTestPath, getDataDir, roundFloat)
+from functions import (strToDate, dateToStr, getTestPath, getDataDir, roundFloat, getLastFriday)
 from const import *
 from text import *
 
@@ -689,6 +690,8 @@ class SellBuyRatioPlotter(LoggerWrapper):
         从每日期权价格表中筛选出当月合约的数据，如果距离到期日不足7日，则选出下月的数据。
         :param fp: filePath
                 某个交易日的所有期权合约日行情数据
+        :param keepCurrent: Bool
+                是否使用当月合约（不切换到下月）
         :return: pd.DataFrame
         """
         df = pd.read_csv(fp, index_col=0)
@@ -779,6 +782,44 @@ class SellBuyRatioPlotter(LoggerWrapper):
         outputDir = self.jqsdk.getResearchPath(OPTION, 'dailytask')
         overlap.render(os.path.join(outputDir, htmlName))
 
+    def getRecentDays(self, nDays=7):
+        """
+        取最近n个交易日的起止日期。
+        :param nDays:
+        :return: tuple(string, string)
+        """
+        # 获取交易日
+        tradeDays = self.jqsdk.getTradeDayCal()
+
+        # 获取截至日期
+        today = self.jqsdk.today
+        if today.date() in tradeDays:
+            end = self.jqsdk.getPreTradeDay(today)
+        else:
+            latestTradeDay = self.jqsdk.getPreTradeDay(today)
+            latestTradeDayDt = datetime(latestTradeDay.year, latestTradeDay.month, latestTradeDay.day)
+            end = self.jqsdk.getPreTradeDay(latestTradeDayDt)
+
+        preTradeDays = tradeDays[tradeDays <= end]
+        dateRange = preTradeDays[-nDays:]
+        return dateToStr(dateRange[0]), dateToStr(dateRange[-1])
+
+    def getFpsByDateRange(self, start, end):
+        """
+        获取某个日期区间的期权日行情文件路径列表
+        :param start: string
+        :param end: string
+        :return: list(fp)
+        """
+        tradeDays = self.jqsdk.getTradeDayCal()
+        start = strToDate(start).date()
+        end = strToDate(end).date()
+        dateRange = tradeDays[(tradeDays >= start) & (tradeDays <= end)]
+
+        fnames = ['option_daily_{}.csv'.format(dateToStr(date)) for date in dateRange]
+        fps = [os.path.join(self.jqsdk.getPricePath('option', 'daily'), filename) for filename in fnames]
+        return fps
+
     def setAtmStart(self, date):
         self.atmStart = date
 
@@ -788,6 +829,8 @@ class SellBuyRatioPlotter(LoggerWrapper):
     def getAtmContract(self, fp, keepCurrent=False):
         """
         获取某个交易日的平值期权合约数据。
+        :param keepCurrent: Bool
+                是否使用当月合约（不切换到下月）
         :param fp: 日行情数据csv文件路径
         :return: pd.DataFrame
         """
@@ -1008,6 +1051,63 @@ class SellBuyRatioPlotter(LoggerWrapper):
         df['returnRate'] = (df['return'] / df['entry']).map(lambda x: round(x, 3))
         return df
 
+    def getOneWeekAtmPrice(self):
+        """
+        获取上周五（包含）到今日的平值期权价和数据。
+        :return: pandas.Series
+        """
+        lastFri = getLastFriday()
+        if not self.jqsdk.isTradeDay(lastFri):
+            lastFri = self.jqsdk.getPreTradeDay(lastFri)
+        startFn = 'option_daily_{}.csv'.format(dateToStr(lastFri))
+        startFp = os.path.join(self.jqsdk.getPricePath('option', 'daily'), startFn)
+        print(startFp)
+
+        atmDf = self.getAtmContract(startFp, keepCurrent=False)
+        month = atmDf['month'].iloc[0]
+        atmStrike = atmDf['strikePrice'].iloc[0]
+        label = '{}-{}'.format(month, atmStrike)
+
+        closeList = []
+        for idx, series in atmDf.iterrows():
+            # print(series['code'])
+            # print(series['trading_code'])
+            df = self.jqsdk.get_price(series['code'], lastFri, self.jqsdk.today.replace(hour=18), '1m')
+            closeList.append(df.close)
+        mergeClose = closeList[0] + closeList[1]
+        mergeClose = mergeClose.map(lambda x: round(x, 4))
+        mergeClose.name = label
+        # print(mergeClose)
+        return mergeClose
+
+    def plotOneWeekAtmPrice(self):
+        """
+        绘制上周五平值期权价这周的价和走势图。
+        :return:
+        """
+
+        close = self.getOneWeekAtmPrice()
+        # df = pd.read_csv(getTestPath('atm.csv'), index_col=0, parse_dates=True)
+        yMin = close.min() * 0.95
+        yMax = close.max() * 1.05
+
+        marklineList = [{'xAxis': i} for i in range(0, len(close), 240)]
+
+        overlap = Overlap(width=1500, height=600)
+        line = Line(u'上周五平值购沽本周价和图', is_animation=False)
+        line.add(close.name, close.index.tolist(), close.tolist(),
+                 is_datazoom_show=True, datazoom_type='both', datazoom_range=[0, 100],
+                 is_datazoom_extra_show=True, datazoom_extra_type='both', datazoom_extra_range=[0, 100],
+                 xaxis_interval=239, yaxis_min=yMin, yaxis_max=yMax,
+                 tooltip_trigger='axis', tooltip_formatter='{b}', tooltip_axispointer_type='cross',
+                 mark_line_raw=marklineList, mark_line_symbolsize=0,
+                 is_toolbox_show=False)
+        overlap.add(line)
+
+        htmlName = 'atmOneWeek.html'
+        outputDir = self.jqsdk.getResearchPath(OPTION, 'dailytask')
+        overlap.render(os.path.join(outputDir, htmlName))
+
     def getAtmPriceCombineByDate(self, fp):
         """
         获取某个交易日的平值期权价和分钟数据。
@@ -1034,44 +1134,6 @@ class SellBuyRatioPlotter(LoggerWrapper):
         mergeClose.name = label
 
         return label, mergeClose
-
-    def getRecentDays(self, nDays=7):
-        """
-        取最近n个交易日的起止日期。
-        :param nDays:
-        :return: tuple(string, string)
-        """
-        # 获取交易日
-        tradeDays = self.jqsdk.getTradeDayCal()
-
-        # 获取截至日期
-        today = self.jqsdk.today
-        if today.date() in tradeDays:
-            end = self.jqsdk.getPreTradeDay(today)
-        else:
-            latestTradeDay = self.jqsdk.getPreTradeDay(today)
-            latestTradeDayDt = datetime(latestTradeDay.year, latestTradeDay.month, latestTradeDay.day)
-            end = self.jqsdk.getPreTradeDay(latestTradeDayDt)
-
-        preTradeDays = tradeDays[tradeDays <= end]
-        dateRange = preTradeDays[-nDays:]
-        return dateToStr(dateRange[0]), dateToStr(dateRange[-1])
-
-    def getFpsByDateRange(self, start, end):
-        """
-        获取某个日期区间的期权日行情文件路径列表
-        :param start: string
-        :param end: string
-        :return: list(fp)
-        """
-        tradeDays = self.jqsdk.getTradeDayCal()
-        start = strToDate(start).date()
-        end = strToDate(end).date()
-        dateRange = tradeDays[(tradeDays >= start) & (tradeDays <= end)]
-
-        fnames = ['option_daily_{}.csv'.format(dateToStr(date)) for date in dateRange]
-        fps = [os.path.join(self.jqsdk.getPricePath('option', 'daily'), filename) for filename in fnames]
-        return fps
 
     def getAtmPriceCombineByRange(self, start, end):
         """

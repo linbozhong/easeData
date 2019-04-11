@@ -280,6 +280,14 @@ class JQDataCollector(DataCollector):
             self.tradeDayCal = self.get_all_trade_days()
         return self.tradeDayCal
 
+    def isTradeDay(self, date):
+        """
+        判断是否交易日
+        :param date: datetime.datetime
+        :return:
+        """
+        return date.date() in self.getTradeDayCal()
+
     def getNextTradeDay(self, date):
         """
         获取下一交易日。
