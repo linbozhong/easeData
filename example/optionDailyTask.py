@@ -1,5 +1,7 @@
 # coding:utf-8
 
+from easeData.functions import dateToStr
+
 
 def updateData():
     print(u"更新数据..")
@@ -45,11 +47,18 @@ def plotAtm():
     # print(u"绘制平值期权走势..")
     # plotter.plotAtmCombinePrice()
 
-    print(u"绘制上周五平值期权本周走势图..")
-    plotter.plotOneWeekAtmPrice()
+    print(u"绘制上周五跨式组合期权本周走势图..")
+    close = plotter.getOneWeekMergedPrice(plotter.getAtmContract)
+    plotter.plotMergedPrice('atmOneWeek', close)
 
-    print(u"绘制平值期权Alpha..")
-    plotter.plotAtmAlpha()
+    close = plotter.getOneWeekMergedPrice(plotter.getStraddleContract, level=1)
+    plotter.plotMergedPrice('straddle1OneWeek', close)
+
+    close = plotter.getOneWeekMergedPrice(plotter.getStraddleContract, level=2)
+    plotter.plotMergedPrice('straddle2OneWeek', close)
+
+    # print(u"绘制平值期权Alpha..")
+    # plotter.plotAtmAlpha()
 
     # print(u"绘制50etf资金流向图..")
     # plotter.updateMoneyFlowOf50Etf()
@@ -64,7 +73,7 @@ def plotEtfRatio():
 
 def main():
     updateData()
-    plotPosition()
+    # plotPosition()
     plotRatio()
     plotQvix()
     plotAtm()

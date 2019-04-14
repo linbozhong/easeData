@@ -2,9 +2,10 @@
 
 import unittest
 import os
+from datetime import datetime
 from easeData.functions import getTestPath
 from easeData.analyze import CorrelationAnalyzer, PositionDiffPlotter, SellBuyRatioPlotter, QvixPlotter
-from datetime import datetime
+from easeData.functions import dateToStr
 
 corrAnalyzer = CorrelationAnalyzer()
 positionDiffPlotter = PositionDiffPlotter()
@@ -159,10 +160,21 @@ class TestSellBuyRatioPlotter(unittest.TestCase):
         df.to_csv(getTestPath('nearbyContract.csv'))
 
     def testGetAtmContract(self):
-        filename = 'option_daily_2019-01-25.csv'
+        filename = 'option_daily_2019-04-10.csv'
         fp = os.path.join(self.obj.jqsdk.getPricePath('option', 'daily'), filename)
-        df = self.obj.getAtmContract(fp)
-        df.to_csv(getTestPath('atmContract.csv'))
+        # df = self.obj.getAtmContract(fp)
+        # df.to_csv(getTestPath('atmContract.csv'))
+
+        # df2 = self.obj.getStraddleContract(fp)
+        # df2.to_csv(getTestPath('straddle.csv'))
+
+        df3 = self.obj.getAssignedContract(fp, 3300, 2700)
+        df3.to_csv(getTestPath('assigned.csv'))
+
+    def testGetMergedPrice(self):
+        start = datetime(2019, 2, 18)
+        end = datetime(2019, 2, 22)
+        self.obj.getMergedPrice(start, end, self.obj.getAssignedContract, callStrikePrice=2550, putStrikePrice=2550)
 
     def testGetRecentDays(self):
         print(self.obj.getRecentDays(7))
@@ -204,10 +216,32 @@ class TestSellBuyRatioPlotter(unittest.TestCase):
         print(reslist)
 
     def testGetOneWeekAtm(self):
-        self.obj.getOneWeekAtmPrice()
+        self.obj.getOneWeekMergedPrice(self.obj.getAtmContract)
 
     def testPlotOneWeekAtm(self):
-        self.obj.plotOneWeekAtmPrice()
+        close = self.obj.getOneWeekMergedPrice(self.obj.getAtmContract)
+        self.obj.plotMergedPrice('atmOneWeek-test', close)
+
+        close = self.obj.getOneWeekMergedPrice(self.obj.getStraddleContract, level=2)
+        self.obj.plotMergedPrice('straddle2-test', close)
+
+    def testPlotAssignedMergedPrice(self):
+        start = datetime(2019, 2, 18)
+        end = datetime(2019, 2, 22)
+        call = 2550
+        put = 2550
+        close = self.obj.getMergedPrice(start, end, self.obj.getAssignedContract, callStrikePrice=call,
+                                        putStrikePrice=put)
+        self.obj.plotMergedPrice('{}-to-{}-straddle'.format(dateToStr(start), dateToStr(end)), close)
+
+        call = 2750
+        put = 2750
+        start = datetime(2019, 2, 25)
+        end = datetime(2019, 3, 1)
+        close = self.obj.getMergedPrice(start, end, self.obj.getAssignedContract, callStrikePrice=call,
+                                        putStrikePrice=put)
+        # close.to_csv(getTestPath('bug.csv'))
+        self.obj.plotMergedPrice('{}-to-{}-straddle'.format(dateToStr(start), dateToStr(end)), close)
 
     def testMergeAtm(self):
         # self.obj.setAtmStart(self.atmStart)

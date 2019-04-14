@@ -207,7 +207,7 @@ def parseFilename(filename):
 def getLastFriday(date=None):
     """
     获取上周五的日期
-    :return:
+    :return: datetime.datetime
     """
     if date is None:
         date = datetime.now()

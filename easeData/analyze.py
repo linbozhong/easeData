@@ -614,6 +614,7 @@ class SellBuyRatioPlotter(LoggerWrapper):
         self.contractTypeDict = None
         self.tradingCodeDict = None
         self.lastTradeDateDict = None
+        self.strikePriceGroupedContractDict = None
 
         self.underlyingSymbol = '510050.XSHG'
 
@@ -826,38 +827,6 @@ class SellBuyRatioPlotter(LoggerWrapper):
     def setAtmEnd(self, date):
         self.atmEnd = date
 
-    def getAtmContract(self, fp, keepCurrent=False):
-        """
-        获取某个交易日的平值期权合约数据。
-        :param keepCurrent: Bool
-                是否使用当月合约（不切换到下月）
-        :param fp: 日行情数据csv文件路径
-        :return: pd.DataFrame
-        """
-        self.info(u'获取当日平值期权:{}'.format(os.path.basename(fp)))
-
-        df = self.getNearbyContract(fp, keepCurrent)
-        df['strikePrice'] = df['trading_code'].map(lambda x: int(x[-4:]))  # 提取行权价
-        df['isHasM'] = df['trading_code'].map(lambda x: x[11] == 'M')
-        if df['isHasM'].any():
-            mask = df['trading_code'].map(lambda x: x[11] == 'M')  # 如果有存在M的合约，就过滤掉带A的合约
-            df = df[mask]
-
-        # 按行权价分组，并计算认购和认购的权利金价差，存入列表，通过排序得出平值期权
-        grouped = df.groupby('strikePrice')
-        groupedDict = dict(list(grouped))
-        spreadList = []
-        for strikePrice, df in groupedDict.items():
-            close = df.close.tolist()
-            spread = abs(close[0] - close[1])
-            spreadList.append((strikePrice, spread))
-        spreadList.sort(key=lambda x: (x[1], x[0]))  # 以元祖的第二项(即价差)优先排序
-
-        # 获取平值卖购和卖沽的价和数据
-        atmStrike = spreadList[0][0]  # 取平值期权的行权价
-        atmDf = groupedDict.get(atmStrike)  # 获取保存平值期权两个合约的dataframe
-        return atmDf
-
     def getAtmAlphaByDate(self, fp):
         """
         获取当日平值期权沽、购的alpha（theta/gamma)
@@ -1051,28 +1020,112 @@ class SellBuyRatioPlotter(LoggerWrapper):
         df['returnRate'] = (df['return'] / df['entry']).map(lambda x: round(x, 3))
         return df
 
-    def getOneWeekAtmPrice(self):
+    def getStraddleContract(self, fp, level=2, **kwargs):
         """
-        获取上周五（包含）到今日的平值期权价和数据。
+        获取跨式合约的dataFrame。
+        :param fp: 初始日的期权价格数据文件。
+        :param level: int
+                虚值多少档
+        :return: pd.DataFrame
+        """
+        df = self.getAtmContract(fp, **kwargs)
+        atmStrikePrice = df.strikePrice.values[0]
+
+        strikePriceList = self.strikePriceGroupedContractDict.keys()
+        # print(atmStrikePrice, strikePriceList)
+        strikePriceList.sort()
+        atmIndex = strikePriceList.index(atmStrikePrice)
+
+        callStrikePrice = strikePriceList[atmIndex + level]
+        putStrikePrice = strikePriceList[atmIndex - level]
+        print(callStrikePrice, putStrikePrice)
+
+        callDf = self.strikePriceGroupedContractDict[callStrikePrice]
+        onlyCallDf = callDf[callDf.trading_code.map(lambda code: 'C' in code)]
+        putDf = self.strikePriceGroupedContractDict[putStrikePrice]
+        onlyPutDf = putDf[putDf.trading_code.map(lambda code: 'P' in code)]
+
+        resDf = pd.concat([onlyCallDf, onlyPutDf])
+        # print resDf
+        return resDf
+
+    def getAtmContract(self, fp, keepCurrent=False):
+        """
+        获取某个交易日的平值期权合约数据，并按行权价分组保存当日的合约基础数据。
+        :param keepCurrent: Bool
+                是否使用当月合约（不切换到下月）
+        :param fp: 日行情数据csv文件路径
+        :return: pd.DataFrame
+        """
+        self.info(u'获取当日平值期权:{}'.format(os.path.basename(fp)))
+
+        df = self.getNearbyContract(fp, keepCurrent)
+        df['strikePrice'] = df['trading_code'].map(lambda x: int(x[-4:]))  # 提取行权价
+        df['isHasM'] = df['trading_code'].map(lambda x: x[11] == 'M')
+        if df['isHasM'].any():
+            mask = df['trading_code'].map(lambda x: x[11] == 'M')  # 如果有存在M的合约，就过滤掉带A的合约
+            df = df[mask]
+
+        # 按行权价分组，并计算认购和认购的权利金价差，存入列表，通过排序得出平值期权
+        grouped = df.groupby('strikePrice')
+        groupedDict = dict(list(grouped))
+        spreadList = []
+        for strikePrice, df in groupedDict.items():
+            close = df.close.tolist()
+            spread = abs(close[0] - close[1])
+            spreadList.append((strikePrice, spread))
+        spreadList.sort(key=lambda x: (x[1], x[0]))  # 以元祖的第二项(即价差)优先排序
+
+        # 获取平值卖购和卖沽的价和数据
+        atmStrike = spreadList[0][0]  # 取平值期权的行权价
+        atmDf = groupedDict.get(atmStrike)  # 获取保存平值期权两个合约的dataframe
+        self.strikePriceGroupedContractDict = groupedDict  # 保存分组数据供其他函数调用
+        return atmDf
+
+    def getAssignedContract(self, fp, callStrikePrice, putStrikePrice, **kwargs):
+        """
+        获取某个交易日指定行权价的跨式合约数据。
+        :param fp:
+        :param callStrikePrice:
+        :param putStrikePrice:
+        :return:
+        """
+        self.getAtmContract(fp, **kwargs)
+
+        if callStrikePrice == putStrikePrice:
+            df = self.strikePriceGroupedContractDict[callStrikePrice]
+        else:
+            callDf = self.strikePriceGroupedContractDict[callStrikePrice]
+            onlyCallDf = callDf[callDf.trading_code.map(lambda code: 'C' in code)]
+            putDf = self.strikePriceGroupedContractDict[putStrikePrice]
+            onlyPutDf = putDf[putDf.trading_code.map(lambda code: 'P' in code)]
+            df = pd.concat([onlyCallDf, onlyPutDf])
+        return df
+
+    def getMergedPrice(self, start, end, func, **kwargs):
+        """
+        获取期权组合指定日期区间的价和数据。
+        :param start: datetime.date 或 datetime.datetime
+        :param end: datetime.datetime
+        :param func: methods
+        :param kwargs: func运行的输入函数
         :return: pandas.Series
         """
-        lastFri = getLastFriday()
-        if not self.jqsdk.isTradeDay(lastFri):
-            lastFri = self.jqsdk.getPreTradeDay(lastFri)
-        startFn = 'option_daily_{}.csv'.format(dateToStr(lastFri))
+        startFn = 'option_daily_{}.csv'.format(dateToStr(start))
         startFp = os.path.join(self.jqsdk.getPricePath('option', 'daily'), startFn)
-        print(startFp)
+        groupDf = func(startFp, **kwargs)
+        # print(groupDf)
 
-        atmDf = self.getAtmContract(startFp, keepCurrent=False)
-        month = atmDf['month'].iloc[0]
-        atmStrike = atmDf['strikePrice'].iloc[0]
-        label = '{}-{}'.format(month, atmStrike)
+        # 获取价和图label
+        month = groupDf['month'].iloc[0]
+        leg1 = groupDf['strikePrice'].iloc[0]
+        leg2 = groupDf['strikePrice'].iloc[1]
+        label = '{}-{}-{}'.format(month, leg1, leg2)
 
+        # 获取价和数据
         closeList = []
-        for idx, series in atmDf.iterrows():
-            # print(series['code'])
-            # print(series['trading_code'])
-            df = self.jqsdk.get_price(series['code'], lastFri, self.jqsdk.today.replace(hour=18), '1m')
+        for idx, series in groupDf.iterrows():
+            df = self.jqsdk.get_price(series['code'], start, end.replace(hour=18), '1m')
             closeList.append(df.close)
         mergeClose = closeList[0] + closeList[1]
         mergeClose = mergeClose.map(lambda x: round(x, 4))
@@ -1080,13 +1133,30 @@ class SellBuyRatioPlotter(LoggerWrapper):
         # print(mergeClose)
         return mergeClose
 
-    def plotOneWeekAtmPrice(self):
+    def getOneWeekMergedPrice(self, func, **kwargs):
         """
-        绘制上周五平值期权价这周的价和走势图。
-        :return:
+        获取上周五（包含）到今日的期权跨式组合价和数据。
+        :param: func: methods
+                 获取价和数据的函数
+        :param: **kwargs: func运行的输入参数
+        :return: pandas.Series
+        """
+        lastFri = getLastFriday()
+        if not self.jqsdk.isTradeDay(lastFri):
+            lastFri = self.jqsdk.getPreTradeDay(lastFri)
+        mergeClose = self.getMergedPrice(lastFri, self.jqsdk.today, func, **kwargs)
+        return mergeClose
+
+    def plotMergedPrice(self, filename, mergeClose):
+        """
+        绘制期权跨式组合的价和走势图。
+        :param: filename: string
+                    保存的html文件名
+        :param: mergeClose: pandas.series
+                    期权组合价和数据
         """
 
-        close = self.getOneWeekAtmPrice()
+        close = mergeClose
         # df = pd.read_csv(getTestPath('atm.csv'), index_col=0, parse_dates=True)
         yMin = close.min() * 0.95
         yMax = close.max() * 1.05
@@ -1094,7 +1164,7 @@ class SellBuyRatioPlotter(LoggerWrapper):
         marklineList = [{'xAxis': i} for i in range(0, len(close), 240)]
 
         overlap = Overlap(width=1500, height=600)
-        line = Line(u'上周五平值购沽本周价和图', is_animation=False)
+        line = Line(u'期权组合购沽价和图', is_animation=False)
         line.add(close.name, close.index.tolist(), close.tolist(),
                  is_datazoom_show=True, datazoom_type='both', datazoom_range=[0, 100],
                  is_datazoom_extra_show=True, datazoom_extra_type='both', datazoom_extra_range=[0, 100],
@@ -1104,7 +1174,7 @@ class SellBuyRatioPlotter(LoggerWrapper):
                  is_toolbox_show=False)
         overlap.add(line)
 
-        htmlName = 'atmOneWeek.html'
+        htmlName = '{}.html'.format(filename)
         outputDir = self.jqsdk.getResearchPath(OPTION, 'dailytask')
         overlap.render(os.path.join(outputDir, htmlName))
 
