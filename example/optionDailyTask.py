@@ -1,6 +1,6 @@
 # coding:utf-8
 
-from easeData.functions import dateToStr
+
 
 
 def updateData():
@@ -91,5 +91,6 @@ if __name__ == '__main__':
     from datetime import datetime, timedelta
     from easeData.collector import JQDataCollector
     from easeData.analyze import PositionDiffPlotter, SellBuyRatioPlotter, QvixPlotter
+    from easeData.functions import dateToStr
 
     main()
