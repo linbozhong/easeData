@@ -31,7 +31,7 @@ def analyze_qvix():
 
     df['prev_close'] = df.close.shift(1)
     df['vix_open_change'] = (df['open'] - df['prev_close']) / df['prev_close']
-    df['vix_close_change'] = (df['close'] - df['open']) / df['open']
+    df['vix_close_change'] = (df['close'] - df['prev_close']) / df['prev_close']
 
     column_name_dict = {
         'open': VIX_OPEN,
@@ -44,7 +44,7 @@ def analyze_qvix():
 
     df.rename(columns=column_name_dict, inplace=True)
     df.index.name = DATETIME
-    df.to_csv('vix.csv', encoding='utf-8-sig')
+    # df.to_csv('vix.csv', encoding='utf-8-sig')
     return df
 
 
@@ -58,7 +58,7 @@ def analyze_50etf(start='2015-02-09', end=None, ratio=0.01):
 
     df['prev_close'] = df.close.shift(1)
     df['s_open_change'] = (df['open'] - df['prev_close']) / df['prev_close']
-    df['s_close_change'] = (df['close'] - df['open']) / df['open']
+    df['s_close_change'] = (df['close'] - df['prev_close']) / df['prev_close']
 
     column_name_dict = {
         'weekday': WEEKDAY,
@@ -77,7 +77,7 @@ def analyze_50etf(start='2015-02-09', end=None, ratio=0.01):
 
     newItem = [WEEKDAY, S_OPEN_CHANGE, S_CLOSE_CHANGE, S_OPEN, S_HIGH, S_LOW, S_CLOSE]
     df_res = df_res[newItem]
-    df_res.to_csv('50etf.csv', encoding='utf-8-sig')
+    df_res.to_csv('50etf.csv', encoding='gb2312')
     # print(df_res)
     return df_res
 
@@ -88,7 +88,7 @@ def merge_s_and_vix(s_df, vix_df):
     newItem = [WEEKDAY, S_OPEN_CHANGE, VIX_OPEN_CHANGE, VIX_OPEN, VIX_HIGH, VIX_LOW, VIX_CLOSE, S_CLOSE_CHANGE,
                VIX_CLOSE_CHANGE]
     df = df[newItem]
-    df.to_csv('50etf_and_vix.csv', encoding='utf-8-sig')
+    df.to_csv('50etf_and_vix.csv', encoding='gb2312')
 
 
 if __name__ == '__main__':

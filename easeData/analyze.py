@@ -1,5 +1,7 @@
 # coding:utf-8
 
+import requests
+import csv
 import numpy as np
 import pandas as pd
 import os
@@ -24,6 +26,8 @@ from collector import JQDataCollector
 from functions import (strToDate, dateToStr, getTestPath, getDataDir, roundFloat, getLastFriday)
 from const import *
 from text import *
+
+QVIX_URL = 'http://1.optbbs.com/d/csv/d/vixk.csv'
 
 
 class CorrelationAnalyzer(LoggerWrapper):
@@ -1102,12 +1106,13 @@ class SellBuyRatioPlotter(LoggerWrapper):
             df = pd.concat([onlyCallDf, onlyPutDf])
         return df
 
-    def getMergedPrice(self, start, end, func, **kwargs):
+    def getMergedPrice(self, start, end, func, dataType='close', **kwargs):
         """
         获取期权组合指定日期区间的价和数据。
         :param start: datetime.date 或 datetime.datetime
         :param end: datetime.datetime
         :param func: methods
+        :param dataType: str
         :param kwargs: func运行的输入函数
         :return: pandas.Series
         """
@@ -1123,17 +1128,28 @@ class SellBuyRatioPlotter(LoggerWrapper):
         label = '{}-{}-{}'.format(month, leg1, leg2)
 
         # 获取价和数据
+
         closeList = []
+        klineList = []
         for idx, series in groupDf.iterrows():
             df = self.jqsdk.get_price(series['code'], start, end.replace(hour=18), '1m')
+            klineList.append(df)
             closeList.append(df.close)
-        mergeClose = closeList[0] + closeList[1]
-        mergeClose = mergeClose.map(lambda x: round(x, 4))
-        mergeClose.name = label
-        # print(mergeClose)
-        return mergeClose
 
-    def getOneWeekMergedPrice(self, func, **kwargs):
+        if dataType == 'close':
+            mergeClose = closeList[0] + closeList[1]
+            mergeClose = mergeClose.map(lambda x: round(x, 4))
+            mergeClose.name = label
+            # print(mergeClose)
+            return mergeClose
+        elif dataType == 'kline':
+            mergeKline = klineList[0] + klineList[1]
+            mergeKline.index.name = label
+            return mergeKline
+        else:
+            self.error('Wrong Data type')
+
+    def getOneWeekMergedPrice(self, func, dataType='close', **kwargs):
         """
         获取上周五（包含）到今日的期权跨式组合价和数据。
         :param: func: methods
@@ -1144,8 +1160,18 @@ class SellBuyRatioPlotter(LoggerWrapper):
         lastFri = getLastFriday()
         if not self.jqsdk.isTradeDay(lastFri):
             lastFri = self.jqsdk.getPreTradeDay(lastFri)
-        mergeClose = self.getMergedPrice(lastFri, self.jqsdk.today, func, **kwargs)
-        return mergeClose
+        if dataType == 'close':
+            mergeClose = self.getMergedPrice(lastFri, self.jqsdk.today, func, dataType=dataType, **kwargs)
+            return mergeClose
+        else:
+            mergeDf = self.getMergedPrice(lastFri, self.jqsdk.today, func, dataType=dataType, **kwargs)
+            return mergeDf
+
+    def plotMergePriceKline(self, func, filename, **kwargs):
+        df = self.getOneWeekMergedPrice(func, dataType='kline', **kwargs)
+        title = df.index.name
+        plotter = KlinePlotter(df)
+        plotter.plotAll(title, filename)
 
     def plotMergedPrice(self, filename, mergeClose):
         """
@@ -1646,10 +1672,28 @@ class QvixPlotter(LoggerWrapper):
         :return: pd.DataFrame
         """
         if self.dailyData is None:
+            # 从网络获取最新数据
+            resp = requests.get(QVIX_URL)
+            csv_reader = csv.DictReader(resp.iter_lines())
+            csv_list = list(csv_reader)
+            latest = csv_list[-1]
+            self.info(u'波动率数据更新完成')
+
+            d = dict()
+            d['open'] = float(latest['2'])
+            d['high'] = float(latest['3'])
+            d['low'] = float(latest['4'])
+            d['close'] = float(latest['5'])
+            s = pd.Series(d)
+            s.name = dateToStr(datetime.fromtimestamp(float(latest['1']) / 1000))
+
             filename = 'qvix_daily.csv'
             fp = os.path.join(getDataDir(), RESEARCH, OPTION, 'qvix', filename)
             df = pd.read_csv(fp, index_col=0, parse_dates=True)
             df.index = df.index.map(dateToStr)
+            if df.iloc[-1].name != s.name:
+                df = df.append(s)
+            df.to_csv(fp, encoding='utf-8')
             self.dailyData = df
         return self.dailyData
 
@@ -1945,6 +1989,172 @@ class QvixPlotter(LoggerWrapper):
         htmlName = 'qvix_daily.html'
         outputDir = self.jqsdk.getResearchPath(OPTION, 'dailytask')
         page.render(os.path.join(outputDir, htmlName))
+
+
+class KlinePlotter(LoggerWrapper):
+    """
+    k线行情及指标绘图器。
+    """
+
+    def __init__(self, df):
+        super(KlinePlotter, self).__init__()
+        self.jqsdk = JQDataCollector()
+        self.width = 1500
+        self.height = 600
+        self.data = df
+
+        self.genStyle = {
+            'is_datazoom_show': True,
+            'datazoom_type': 'both'
+        }
+
+    def getCsvData(self):
+        return self.data
+
+    def setCsvData(self, df):
+        self.data = df
+
+    def addCloseMa(self, n):
+        """
+        计算均线，并保存到数据df中
+        :param n: int
+        :return: pd.Series
+        """
+        df = self.getCsvData()
+        colName = 'close_ma{}'.format(n)
+        df[colName] = df['close'].rolling(n).mean()
+        df[colName] = df[colName].map(lambda x: round(x, 5))
+        return df[colName]
+
+    def addCloseStd(self, n):
+        """
+        计算标准差，并保存到数据df中
+        :param n: int
+        :return: pd.Series
+        """
+        df = self.getCsvData()
+        colName = 'close_std{}'.format(n)
+        df[colName] = df['close'].rolling(n).std()
+        return df[colName]
+
+    def plotKline(self, title=u'k线', addStyle=None):
+        """
+        返回波动率k线图对象
+        :param title:
+        :param addStyle: dict
+        :return:
+        """
+        kStyle = self.genStyle.copy()
+        if addStyle is not None:
+            kStyle.update(addStyle)
+
+        df = self.getCsvData()
+        dateList = df.index.tolist()
+
+        gen = df.iterrows()
+        ohlc = [[data['open'], data['close'], data['low'], data['high']] for idx_, data in gen]
+
+        kline = Kline(title)
+        kline.add(title, dateList, ohlc, tooltip_formatter=kline_tooltip_formatter, **kStyle)
+        # kline.render(getTestPath('qvixkline.html'))
+
+        return kline
+
+    def getOverlapWithKline(self, title, **kwargs):
+        """
+        返回一个已经叠加了k线图的叠加图。
+        :param title: string
+                叠加图标题
+        :return:
+        """
+        overlap = Overlap(width=self.width, height=self.height)
+        kline = self.plotKline(title, **kwargs)
+        overlap.add(kline)
+        return overlap
+
+    def plotMa(self, title, n1=5, n2=20, n3=60):
+        """
+        绘制均线系统叠加图
+        :param title: str
+        :param n1: int
+        :param n2: int
+        :param n3: int
+        :return:
+        """
+        lineStyle = self.genStyle.copy()
+        lineStyle['line_width'] = 2
+
+        # title = u'波动率指数移动平均线'
+        overlap = Overlap(width=self.width, height=self.height)
+        kline = self.plotKline(title)
+        overlap.add(kline)
+
+        df = self.getCsvData()
+        dateList = df.index.tolist()
+
+        for ma in [n1, n2, n3]:
+            label = u'MA{}'.format(ma)
+            line = Line()
+            line.add(label, dateList, self.addCloseMa(ma).tolist(), **lineStyle)
+            overlap.add(line)
+
+        # overlap.render(getTestPath('qvixkline.html'))
+        return overlap
+
+    def plotBollChanel(self, title, n=20):
+        """
+        绘制boll通道叠加图
+        :param title: str
+        :param n:
+        :return:
+        """
+        lineStyle = self.genStyle.copy()
+        lineStyle['line_width'] = 2
+
+        # title = u'波动率指数Boll通道'
+        overlap = Overlap(width=self.width, height=self.height)
+        kline = self.plotKline(title)
+        overlap.add(kline)
+
+        df = self.getCsvData()
+        dateList = df.index.tolist()
+
+        lineMid = Line()
+        lineMid.add(u'布林MID', dateList, self.addCloseMa(n).tolist(), **lineStyle)
+        overlap.add(lineMid)
+
+        upList = self.addCloseMa(n) + 2 * self.addCloseStd(n)
+        upList = upList.tolist()
+        lineUp = Line()
+        lineUp.add(u'布林UP', dateList, upList, **lineStyle)
+        overlap.add(lineUp)
+
+        downList = self.addCloseMa(n) - 2 * self.addCloseStd(n)
+        downList = downList.tolist()
+        lineDown = Line()
+        lineDown.add(u'布林Down', dateList, downList, **lineStyle)
+        overlap.add(lineDown)
+
+        return overlap
+        # overlap.render(getTestPath('qvixkline_boll.html'))
+
+    def plotAll(self, title, filename):
+        """
+        按顺序绘制所有的叠加图
+        :return:
+        """
+        page = Page()
+        # etf = self.plotEtf()
+        ma = self.plotMa(title)
+        boll = self.plotBollChanel(title)
+
+        # page.add(etf)
+        page.add(boll)
+        page.add(ma)
+
+        # htmlName = 'qvix_daily.html'
+        outputDir = self.jqsdk.getResearchPath(OPTION, 'dailytask')
+        page.render(os.path.join(outputDir, filename))
 
 
 def kline_tooltip_formatter(params):

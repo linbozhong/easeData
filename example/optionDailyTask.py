@@ -1,8 +1,6 @@
 # coding:utf-8
 
 
-
-
 def updateData():
     print(u"更新数据..")
     today = datetime.today()
@@ -56,6 +54,11 @@ def plotAtm():
 
     close = plotter.getOneWeekMergedPrice(plotter.getStraddleContract, level=2)
     plotter.plotMergedPrice('straddle2OneWeek', close)
+
+    print(u"绘制上周五跨式组合期权本周k线图")
+    plotter.plotMergePriceKline(plotter.getAtmContract, 'atmOneWeekKline.html')
+    plotter.plotMergePriceKline(plotter.getStraddleContract, 'straddle1OneWeekKline.html', level=1)
+    plotter.plotMergePriceKline(plotter.getStraddleContract, 'straddle2OneWeekKline.html', level=2)
 
     # print(u"绘制平值期权Alpha..")
     # plotter.plotAtmAlpha()

@@ -225,6 +225,10 @@ class TestSellBuyRatioPlotter(unittest.TestCase):
         close = self.obj.getOneWeekMergedPrice(self.obj.getStraddleContract, level=2)
         self.obj.plotMergedPrice('straddle2-test', close)
 
+    def testPlotOneWeekAtmKline(self):
+        self.obj.plotMergePriceKline(self.obj.getAtmContract, 'atmOneWeek-kline-test.html')
+        self.obj.plotMergePriceKline(self.obj.getStraddleContract, 'straddle-kline-test.html', level=1)
+
     def testPlotAssignedMergedPrice(self):
         start = datetime(2019, 2, 18)
         end = datetime(2019, 2, 22)
@@ -316,6 +320,9 @@ class TestSellBuyRatioPlotter(unittest.TestCase):
 class TestQvixPlotter(unittest.TestCase):
     def setUp(self):
         self.obj = qvixPlotter
+
+    def testGetCsvData(self):
+        self.obj.getCsvData()
 
     def testAdd50etf(self):
         df = self.obj.add50etf()
