@@ -202,6 +202,10 @@ class TestSellBuyRatioPlotter(unittest.TestCase):
         df = self.obj.strategyAtmLastTradeDays()
         df.to_csv(getTestPath('strategyAtmLastTradeDays.csv'))
 
+    def testStrategyAtmReturnNextTradedayOpen(self):
+        df = self.obj.strategyAtmReturnNextTradedayOpen('2017-01-01', '2019-05-10')
+        df.to_csv(getTestPath('strategyAtmReturnNextTradedayOpen.csv'))
+
     def testGetAtmAlpha(self):
         df = self.obj.getAtmAlpha()
         print(df)

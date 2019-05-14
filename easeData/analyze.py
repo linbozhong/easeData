@@ -11,7 +11,7 @@ import seaborn as sns
 from copy import copy
 from collections import OrderedDict
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 from dateutil.relativedelta import relativedelta, FR
 
 import tushare as ts
@@ -957,6 +957,37 @@ class SellBuyRatioPlotter(LoggerWrapper):
 
         outputDir = self.jqsdk.getResearchPath(OPTION, 'dailytask')
         page.render(os.path.join(outputDir, 'atm_alpha.html'))
+
+    def strategyAtmReturnNextTradedayOpen(self, start, end):
+        """
+        保存平值期权收盘最后一分钟到次日开盘5分钟的数据汇总。
+        :param start:
+        :param end:
+        :return:
+        """
+        tradeDays = self.jqsdk.get_trade_days(start, end)
+
+        l = []
+        for tradeDay in tradeDays:
+            self.info(u'获取{}'.format(dateToStr(tradeDay)))
+            startDt = datetime.combine(tradeDay, time(15, 0, 0))
+            nextTradeDay = self.jqsdk.getNextTradeDay(startDt)
+            endDt = datetime.combine(nextTradeDay, time(9, 35, 0))
+
+            fn = 'option_daily_{}.csv'.format(dateToStr(tradeDay))
+            fp = os.path.join(self.jqsdk.getPricePath('option', 'daily'), fn)
+            atmDf = self.getAtmContract(fp)
+
+            dfList = []
+            for idx, series in atmDf.iterrows():
+                df = self.jqsdk.get_price(series['code'], start_date=startDt, end_date=endDt, frequency='1m')
+                dfList.append(df)
+            df = dfList[0] + dfList[1]
+            df['tradeDay'] = dateToStr(startDt)
+            l.append(df)
+        df = pd.concat(l)
+        return df
+
 
     def getAtmReturnByRange(self, start, end):
         """
