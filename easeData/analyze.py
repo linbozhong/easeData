@@ -988,6 +988,57 @@ class SellBuyRatioPlotter(LoggerWrapper):
         df = pd.concat(l)
         return df
 
+    def getAtmNextTradeDayBar(self, start, end):
+        """
+        获取平值期权次交易日的连续分钟线数据汇总。
+        :param start: str
+        :param end: str
+        :return:
+        """
+        tradeDays = self.jqsdk.get_trade_days(start, end)
+
+        l = []
+        for tradeDay in tradeDays:
+            self.info(u'获取{}'.format(dateToStr(tradeDay)))
+            startDt = datetime.combine(tradeDay, time(16, 0, 0))
+            nextTradeDay = self.jqsdk.getNextTradeDay(startDt)
+            endDt = datetime.combine(nextTradeDay, time(16, 0, 0))
+
+            fn = 'option_daily_{}.csv'.format(dateToStr(tradeDay))
+            fp = os.path.join(self.jqsdk.getPricePath('option', 'daily'), fn)
+            atmDf = self.getAtmContract(fp)
+
+            dfList = []
+            for idx, series in atmDf.iterrows():
+                df = self.jqsdk.get_price(series['code'], start_date=startDt, end_date=endDt, frequency='1m')
+                dfList.append(df)
+            df = dfList[0] + dfList[1]
+            df['tradeDay'] = dateToStr(endDt)
+            l.append(df)
+        df = pd.concat(l)
+
+        save_fp = os.path.join(self.jqsdk.getResearchPath(OPTION, 'dailytask'), 'atm_continuous_bar.csv')
+        df.to_csv(save_fp)
+        return df
+
+    def updateAtmNextTradeDayBar(self, end=None):
+        if end is None:
+            today = self.jqsdk.today
+            end = self.jqsdk.getPreTradeDay(today)
+            end = dateToStr(end)
+
+        fp = os.path.join(self.jqsdk.getResearchPath(OPTION, 'dailytask'), 'atm_continuous_bar.csv')
+        if not os.path.exists(fp):
+            self.getAtmNextTradeDayBar('2017-01-01', end)
+        else:
+            df = pd.read_csv(fp, index_col=0, parse_dates=True)
+            lastDay = df.index.tolist()[-1].strftime('%Y-%m-%d')
+            if lastDay == end:
+                self.info('It is newest.')
+            else:
+                df_new = self.getAtmNextTradeDayBar(lastDay, end)
+                df = df.append(df_new)
+                df.to_csv(fp)
 
     def getAtmReturnByRange(self, start, end):
         """
