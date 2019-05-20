@@ -1513,12 +1513,13 @@ class SellBuyRatioPlotter(LoggerWrapper):
         f = lambda x: round(x, 2)
         df = self.getRatio()
 
-        df['positionRatio_ma5'] = df['positionRatio'].rolling(5).mean()
-        df['positionRatioToMa5'] = df['positionRatio'] / df['positionRatio_ma5']
-        df['positionRatioToMa5'] = df['positionRatioToMa5'].map(f)
+        # df['positionRatio_ma5'] = df['positionRatio'].rolling(5).mean()
+        # df['positionRatioToMa5'] = df['positionRatio'] / df['positionRatio_ma5']
+        # df['positionRatioToMa5'] = df['positionRatioToMa5'].map(f)
         df['moneyRatio_ma5'] = df['moneyRatio'].rolling(5).mean()
-        df['moneyRatioToMa5'] = df['moneyRatio'] / df['moneyRatio_ma5']
-        df['moneyRatioToMa5'] = df['moneyRatioToMa5'].map(f)
+        df['moneyRatio_ma10'] = df['moneyRatio'].rolling(10).mean()
+        # df['moneyRatioToMa5'] = df['moneyRatio'] / df['moneyRatio_ma5']
+        # df['moneyRatioToMa5'] = df['moneyRatioToMa5'].map(f)
         return df
 
     def plotRatio(self):
@@ -1528,7 +1529,7 @@ class SellBuyRatioPlotter(LoggerWrapper):
         """
         width = 1500
         height = 600
-        displayItem = ['volumeRatio', self.underlyingSymbol, 'moneyRatio']
+        displayItem = ['volumeRatio', self.underlyingSymbol, 'moneyRatio', 'moneyRatio_ma5', 'moneyRatio_ma10']
 
         if self.isOnlyNearby:
             title = u'50et期权近月沽购比'
@@ -1540,6 +1541,8 @@ class SellBuyRatioPlotter(LoggerWrapper):
         nameDict = {'moneyRatio': u'沽购成交金额比',
                     'volumeRatio': u'沽购成交量比',
                     'positionRatio': u'沽购持仓量比',
+                    'moneyRatio_ma5': u'沽购成交金额比ma5',
+                    'moneyRatio_ma10': u'沽购成交金额比ma10',
                     'positionRatioToMa5': u'P/C持仓量比5天平均',
                     'moneyRatioToMa5': u'P/C成交金额比5天平均',
                     self.underlyingSymbol: u'50ETF收盘价'
@@ -2262,12 +2265,48 @@ def yaxis_formatter(params):
     return params.se + ' percent'
 
 
-if __name__ == '__main__':
-    import pandas as pd
+def get_qvix_data():
+    """
+    获取期权论坛波动率指数日线数据。
+    :return:
+    """
+    try:
+        resp = requests.get(QVIX_URL)
+        csv_reader = csv.DictReader(resp.iter_lines())
+        csv_list = list(csv_reader)
+    except:
+        print('error occur when get qvix.')
+    else:
+        name_dict = {
+            '1': 'datetime',
+            '2': 'open',
+            '3': 'high',
+            '4': 'low',
+            '5': 'close'
+        }
+        df = pd.DataFrame(csv_list)
+        df.rename(columns=name_dict, inplace=True)
+        df['datetime'] = df['datetime'].map(lambda t_stamp: dateToStr(datetime.fromtimestamp(float(t_stamp) / 1000)))
+        for item in ['open', 'high', 'low', 'close']:
+            df[item] = df[item].map(lambda str_num: float(str_num))
 
-    cs01 = pd.DataFrame([1, 2, 3], index=['a', 'b', 'c'])
-    cs02 = pd.DataFrame([5, 6, 7], index=['b', 'c', 'd'], columns=['city'])
-    s02 = cs02['city']
-    cs01['kity'] = s02
-    # cs03 = pd.concat([cs01, s02], axis=1, sort=False)
-    print(cs01)
+        df.set_index('datetime', inplace=True)
+
+        filename = 'vixBar.csv'
+        fp = os.path.join(getDataDir(), RESEARCH, OPTION, 'qvix', filename)
+
+        df.to_csv(fp)
+        print('update completely!')
+        return df
+
+
+if __name__ == '__main__':
+    get_qvix_data()
+    # import pandas as pd
+    #
+    # cs01 = pd.DataFrame([1, 2, 3], index=['a', 'b', 'c'])
+    # cs02 = pd.DataFrame([5, 6, 7], index=['b', 'c', 'd'], columns=['city'])
+    # s02 = cs02['city']
+    # cs01['kity'] = s02
+    # # cs03 = pd.concat([cs01, s02], axis=1, sort=False)
+    # print(cs01)

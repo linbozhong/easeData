@@ -1,13 +1,62 @@
 # coding:utf-8
 
-
+import requests
+import csv
 import os
 import pandas as pd
 import matplotlib.pyplot as plt
 
+from copy import copy
 from datetime import datetime, time
-from easeData.functions import getDataDir, getTestPath
+from easeData.functions import getDataDir, getTestPath, dateToStr
 from easeData.const import *
+from easeData.analyze import get_qvix_data
+
+
+def analyze_qvix_high_open():
+    filename = 'vixBar.csv'
+    fp = os.path.join(getDataDir(), RESEARCH, OPTION, 'qvix', filename)
+    df = pd.read_csv(fp, index_col=0, parse_dates=True)
+    df = df[datetime(2016, 6, 13):]
+    df = copy(df)
+
+    all_trade_days = len(df)
+
+    df['h-o'] = df['high'] - df['open']
+    df['h-o-ratio'] = (df['h-o'] / df['open']) * 100
+
+    df2 = df[df['h-o'] > 0]
+    df = copy(df2)
+    h_gt_o_trade_days = len(df)
+
+    for i in [5, 10, 20]:
+        h_o_name = 'h-o-ma-{}'.format(i)
+        df[h_o_name] = df['h-o'].rolling(i).mean()
+        h_o_ratio_name = 'h-o-ratio-ma-{}'.format(i)
+        df[h_o_ratio_name] = df['h-o-ratio'].rolling(i).mean()
+
+    new_file = 'vix_bar_high_open_ma.csv'
+    fp2 = os.path.join(getDataDir(), RESEARCH, OPTION, 'qvix', new_file)
+    df.to_csv(fp2)
+
+    print('-' * 30)
+    print(u'自2016-6-13以来，期权论坛波值最高价大于开盘价的交易统计：')
+    print('-' * 30)
+    print(u'总交易日：%s' % all_trade_days)
+    print(u'最高价大于开盘价的交易日：%s， 占比：%.3f %%' % (h_gt_o_trade_days, (float(h_gt_o_trade_days) / float(all_trade_days)) * 100))
+
+    for n in range(0, 15):
+        df_n = df[df['h-o-ratio'] > n]
+        c_n = len(df_n)
+        print(u'百分比超过%s交易日：%s，占比：%.3f %%' % (n, c_n, (float(c_n) / float(h_gt_o_trade_days)) * 100))
+
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 1, 1)
+    ax.set_title(u'Ratio(High to Open) Distribution')
+    ax.set_ylabel('trade_days')
+    df['h-o-ratio'].hist(bins=100, ax=ax)
+    filename = '{}_open.png'.format('high_gt_open')
+    fig.savefig(getTestPath(filename))
 
 
 def set_flag(dt):
@@ -159,5 +208,6 @@ if __name__ == '__main__':
     # analyze_atm_range('14:00', '14:55')
     # analyze_atm_range('09:31', '11:30')
     # analyze_atm_range('13:01', '14:55')
-    analyze_atm_range('09:01', '14:55')
+    # analyze_atm_range('09:01', '14:55')
 
+    analyze_qvix_high_open()

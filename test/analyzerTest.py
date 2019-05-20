@@ -293,8 +293,8 @@ class TestSellBuyRatioPlotter(unittest.TestCase):
         self.obj.isOnlyNearby = True
         self.obj.plotRatio()
 
-        # self.obj.isOnlyNearby = False
-        # self.obj.plotRatio()
+        self.obj.isOnlyNearby = False
+        self.obj.plotRatio()
 
     def testGet50etfAdjustDayList(self):
         d1 = datetime(2017, 1, 1)

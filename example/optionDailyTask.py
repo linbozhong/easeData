@@ -82,6 +82,8 @@ def main():
     plotAtm()
     # plotEtfRatio()
 
+    get_qvix_data()
+
 
 if __name__ == '__main__':
     import os
@@ -94,6 +96,7 @@ if __name__ == '__main__':
     from datetime import datetime, timedelta
     from easeData.collector import JQDataCollector
     from easeData.analyze import PositionDiffPlotter, SellBuyRatioPlotter, QvixPlotter
+    from easeData.analyze import get_qvix_data
     from easeData.functions import dateToStr
 
     main()
