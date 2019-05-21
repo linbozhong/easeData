@@ -59,6 +59,53 @@ def analyze_qvix_high_open():
     fig.savefig(getTestPath(filename))
 
 
+def analyze_qvix_low_close():
+    filename = 'vixBar.csv'
+    fp = os.path.join(getDataDir(), RESEARCH, OPTION, 'qvix', filename)
+    df = pd.read_csv(fp, index_col=0, parse_dates=True)
+    df = df[datetime(2016, 6, 13):]
+    df = copy(df)
+
+    all_trade_days = len(df)
+
+    df['c-l'] = df['close'] - df['low']
+    df['c-l-ratio'] = (df['c-l'] / df['low']) * 100
+
+    df2 = df[df['c-l'] > 0]
+    df = copy(df2)
+    h_gt_o_trade_days = len(df)
+
+    for i in [5, 10, 20]:
+        h_o_name = 'c-l-ma-{}'.format(i)
+        df[h_o_name] = df['c-l'].rolling(i).mean()
+        h_o_ratio_name = 'c-l-ratio-ma-{}'.format(i)
+        df[h_o_ratio_name] = df['c-l-ratio'].rolling(i).mean()
+
+    new_file = 'vix_bar_close_low_ma.csv'
+    fp2 = os.path.join(getDataDir(), RESEARCH, OPTION, 'qvix', new_file)
+    df.to_csv(fp2)
+
+    print('-' * 30)
+    print(u'自2016-6-13以来，期权论坛波值收盘价大于最低价的交易统计：')
+    print('-' * 30)
+    print(u'总交易日：%s' % all_trade_days)
+    print(u'收盘价大于最低价的交易日：%s， 占比：%.3f %%' % (h_gt_o_trade_days, (float(h_gt_o_trade_days) / float(all_trade_days)) * 100))
+
+    for n in range(0, 15):
+        df_n = df[df['c-l-ratio'] > n]
+        c_n = len(df_n)
+        print(u'最低价回打百分比超过%s交易日：%s，占比：%.3f %%' % (n, c_n, (float(c_n) / float(h_gt_o_trade_days)) * 100))
+
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 1, 1)
+    ax.set_title(u'Ratio(Close To Low) Distribution')
+    ax.set_ylabel('trade_days')
+    df['c-l-ratio'].hist(bins=100, ax=ax)
+    filename = '{}_open.png'.format('close_gt_low')
+    fig.savefig(getTestPath(filename))
+
+
+
 def set_flag(dt):
     minute = dt.minute
     if minute != 0:
@@ -210,4 +257,5 @@ if __name__ == '__main__':
     # analyze_atm_range('13:01', '14:55')
     # analyze_atm_range('09:01', '14:55')
 
-    analyze_qvix_high_open()
+    # analyze_qvix_high_open()
+    analyze_qvix_low_close()

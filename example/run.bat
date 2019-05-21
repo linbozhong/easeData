@@ -1,2 +1,2 @@
-python D:\project\easeData\example\optionDailyTask.py
+python E:\project\easeData\example\optionDailyTask.py
 pause
