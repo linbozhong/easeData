@@ -67,6 +67,9 @@ def plotAtm():
     # plotter.updateMoneyFlowOf50Etf()
     # plotter.plotMoneyFlowOf50Etf()
 
+    print(u'update atm continuous bar')
+    plotter.updateAtmNextTradeDayBar()
+
 
 def plotEtfRatio():
     print(u"绘制50etf成交量占比走势..")
