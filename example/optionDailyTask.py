@@ -1,6 +1,5 @@
 # coding:utf-8
 
-
 def updateData():
     print(u"更新数据..")
     today = datetime.today()
@@ -86,6 +85,7 @@ def main():
     # plotEtfRatio()
 
     get_qvix_data()
+    analyzeVix.plot_atm_ohlc_d()
 
 
 if __name__ == '__main__':
@@ -95,6 +95,8 @@ if __name__ == '__main__':
     # 添加当前目录到py查找环境目录
     p = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     sys.path.append(p)
+
+    import analyzeVix
 
     from datetime import datetime, timedelta
     from easeData.collector import JQDataCollector

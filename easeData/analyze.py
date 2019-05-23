@@ -1033,7 +1033,7 @@ class SellBuyRatioPlotter(LoggerWrapper):
         else:
             df = pd.read_csv(fp, index_col=0, parse_dates=True)
             lastDay = df.index.tolist()[-1].strftime('%Y-%m-%d')
-            if lastDay == end:
+            if strToDate(lastDay) >= strToDate(end):
                 self.info('It is newest.')
             else:
                 df_new = self.getAtmNextTradeDayBar(lastDay, end)
@@ -2223,19 +2223,31 @@ class KlinePlotter(LoggerWrapper):
         return overlap
         # overlap.render(getTestPath('qvixkline_boll.html'))
 
-    def plotAll(self, title, filename):
+    def plotAll(self, title, filename, item=None):
         """
         按顺序绘制所有的叠加图
         :return:
         """
         page = Page()
         # etf = self.plotEtf()
-        ma = self.plotMa(title)
-        boll = self.plotBollChanel(title)
 
-        # page.add(etf)
-        page.add(boll)
-        page.add(ma)
+        if item is None:
+            ma = self.plotMa(title)
+            boll = self.plotBollChanel(title)
+
+            # page.add(etf)
+            page.add(boll)
+            page.add(ma)
+        else:
+            if 'kline' in item:
+                kline = self.plotKline(title)
+                page.add(kline)
+            if 'ma' in item:
+                ma = self.plotMa(title, n1=5, n2=10, n3=20)
+                page.add(ma)
+            if 'boll' in item:
+                boll = self.plotBollChanel(title)
+                page.add(boll)
 
         # htmlName = 'qvix_daily.html'
         outputDir = self.jqsdk.getResearchPath(OPTION, 'dailytask')

@@ -11,6 +11,7 @@ from datetime import datetime, time
 from easeData.functions import getDataDir, getTestPath, dateToStr
 from easeData.const import *
 from easeData.analyze import get_qvix_data
+from easeData.analyze import KlinePlotter
 
 
 def analyze_qvix_high_open():
@@ -44,7 +45,7 @@ def analyze_qvix_high_open():
     print('-' * 30)
     print(u'总交易日：%s' % all_trade_days)
     print(u'最高价大于开盘价的交易日：%s， 占比：%.3f %%' % (
-    h_gt_o_trade_days, (float(h_gt_o_trade_days) / float(all_trade_days)) * 100))
+        h_gt_o_trade_days, (float(h_gt_o_trade_days) / float(all_trade_days)) * 100))
 
     for n in range(0, 15):
         df_n = df[df['h-o-ratio'] > n]
@@ -91,7 +92,7 @@ def analyze_qvix_low_close():
     print('-' * 30)
     print(u'总交易日：%s' % all_trade_days)
     print(u'收盘价大于最低价的交易日：%s， 占比：%.3f %%' % (
-    h_gt_o_trade_days, (float(h_gt_o_trade_days) / float(all_trade_days)) * 100))
+        h_gt_o_trade_days, (float(h_gt_o_trade_days) / float(all_trade_days)) * 100))
 
     for n in range(0, 15):
         df_n = df[df['c-l-ratio'] > n]
@@ -137,7 +138,8 @@ def analyze_qvix_high_close():
     print(u'自2016-6-13以来，期权论坛波值最高价大于收盘价的交易统计：')
     print('-' * 30)
     print(u'总交易日：%s' % all_trade_days)
-    print(u'最高价大于收盘价的交易日：%s， 占比：%.3f %%' % (h_gt_o_trade_days, (float(h_gt_o_trade_days) / float(all_trade_days)) * 100))
+    print(u'最高价大于收盘价的交易日：%s， 占比：%.3f %%' % (
+        h_gt_o_trade_days, (float(h_gt_o_trade_days) / float(all_trade_days)) * 100))
 
     for n in range(0, 15):
         df_n = df[df['h-c-ratio'] > n]
@@ -161,6 +163,7 @@ def set_flag(dt):
 
 
 def analyze_single_atm(df):
+    """处理单个交易日平值期权价和-（收盘价和昨日最后一分钟收盘价对比）"""
     df['pre_close'] = df.iloc[0].close
     df['abs_change'] = df['close'] - df['pre_close']
     df['change_ratio'] = (df['close'] - df['pre_close']) / df['pre_close']
@@ -169,6 +172,7 @@ def analyze_single_atm(df):
 
 
 def analyze_single_atm_open(df):
+    """处理单个交易日平值期权价和-（开盘价和昨日最后一分钟收盘价对比）"""
     df['pre_close'] = df.iloc[0].close
     df['abs_change'] = df['open'] - df['pre_close']
     df['change_ratio'] = (df['close'] - df['pre_close']) / df['pre_close']
@@ -177,6 +181,7 @@ def analyze_single_atm_open(df):
 
 
 def analyze_single_atm_range(df, start_time, end_time):
+    """处理单个交易日平值期权价和-自定义时间段（收盘价对比）"""
     df = df.between_time(start_time, end_time)
     start_close = df.iloc[0].close
 
@@ -198,6 +203,30 @@ def analyze_qvix():
     df['open_change'] = (df['open'] - df['pre_close']) / df['pre_close']
     df['open_change'].hist(bins=100)
     df['open_change'].hist(bins=100, cumulative=True, normed=True)
+
+
+def get_atm_continuous_bar():
+    """获取分钟线数据"""
+    filename = 'atm_continuous_bar.csv'
+    fp = os.path.join(getDataDir(), 'research', 'option', 'dailytask', 'atm_continuous_bar.csv')
+    df = pd.read_csv(fp, index_col=0, parse_dates=True)
+    return df
+
+
+def get_atm_ohlc_d():
+    """分钟线合成日线"""
+    ohlc_dict = {'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last'}
+    df = get_atm_continuous_bar()
+    df = df.resample('D').apply(ohlc_dict).dropna()
+    return df
+
+
+def plot_atm_ohlc_d():
+    """输出k线图"""
+    df = get_atm_ohlc_d()
+    plotter = KlinePlotter(df)
+    plotter.plotAll('ATM Option', 'atm_ohlc_daily.html', item=['ma'])
+    print('Plot ATM daily ohlc completely.')
 
 
 def analyze_atm_range(start_time, end_time):
@@ -306,4 +335,6 @@ if __name__ == '__main__':
 
     # analyze_qvix_high_open()
     # analyze_qvix_low_close()
-    analyze_qvix_high_close()
+    # analyze_qvix_high_close()
+
+    plot_atm_ohlc_d()
