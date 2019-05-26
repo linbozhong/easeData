@@ -67,7 +67,7 @@ def plotAtm():
     # plotter.plotMoneyFlowOf50Etf()
 
     print(u'update atm continuous bar')
-    plotter.updateAtmNextTradeDayBar()
+    plotter.updateNeutralNextTradeDayBar()
 
 
 def plotEtfRatio():
@@ -85,7 +85,7 @@ def main():
     # plotEtfRatio()
 
     get_qvix_data()
-    analyzeVix.plot_atm_ohlc_d()
+    analyzeVix.plot_atm_ohlc_daily()
 
 
 if __name__ == '__main__':

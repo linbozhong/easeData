@@ -988,28 +988,50 @@ class SellBuyRatioPlotter(LoggerWrapper):
         df = pd.concat(l)
         return df
 
-    def getAtmNextTradeDayBar(self, start, end):
+    def getNeutralNextTradeDayBar(self, start, end, group='atm', *arg, **kwargs):
         """
-        获取平值期权次交易日的连续分钟线数据汇总。
+        获取delta中性组合（平值或宽跨式组合）次交易日的连续分钟线数据汇总。
         :param start: str
         :param end: str
+        :param group: str. 'atm' or 'straddle'
         :return:
         """
+        if group == 'atm':
+            func = self.getAtmContract
+            save_fn = 'atm_continuous_bar.csv'
+        elif group == 'straddle':
+            func = self.getStraddleContract
+            if 'level' in kwargs:
+                level = kwargs['level']
+            else:
+                level = 2
+            save_fn = 'straddle_continuous_bar_{}.csv'.format(level)
+        else:
+            self.error(u'错误的组合类型')
+            return
+
+        print(save_fn)
+
         tradeDays = self.jqsdk.get_trade_days(start, end)
 
         l = []
         for tradeDay in tradeDays:
-            self.info(u'获取{}'.format(dateToStr(tradeDay)))
+            self.info(u'获取delta中性组合分钟数据：{}'.format(dateToStr(tradeDay)))
             startDt = datetime.combine(tradeDay, time(16, 0, 0))
             nextTradeDay = self.jqsdk.getNextTradeDay(startDt)
             endDt = datetime.combine(nextTradeDay, time(16, 0, 0))
+            if endDt >= self.jqsdk.today:
+                self.info(u'该交易日尚未结束，数据尚未更新！')
+                break
 
             fn = 'option_daily_{}.csv'.format(dateToStr(tradeDay))
             fp = os.path.join(self.jqsdk.getPricePath('option', 'daily'), fn)
-            atmDf = self.getAtmContract(fp)
+            groupDf = func(fp, *arg, **kwargs)
+            if groupDf is None:
+                continue
 
             dfList = []
-            for idx, series in atmDf.iterrows():
+            for idx, series in groupDf.iterrows():
                 df = self.jqsdk.get_price(series['code'], start_date=startDt, end_date=endDt, frequency='1m')
                 dfList.append(df)
             df = dfList[0] + dfList[1]
@@ -1017,26 +1039,46 @@ class SellBuyRatioPlotter(LoggerWrapper):
             l.append(df)
         df = pd.concat(l)
 
-        save_fp = os.path.join(self.jqsdk.getResearchPath(OPTION, 'dailytask'), 'atm_continuous_bar.csv')
+        save_fp = os.path.join(self.jqsdk.getResearchPath(OPTION, 'dailytask'), save_fn)
         df.to_csv(save_fp)
         return df
 
-    def updateAtmNextTradeDayBar(self, end=None):
+    def updateNeutralNextTradeDayBar(self, end=None, group='atm', *args, **kwargs):
+        """
+        更新delta中性组合（平值或宽跨式组合）次交易日的连续分钟线数据。
+        :param end: str
+        :param group: str, 'atm' or 'straddle'
+        :return:
+        """
+        if group == 'atm':
+            fn = 'atm_continuous_bar.csv'
+        elif group == 'straddle':
+            if 'level' in kwargs:
+                level = kwargs['level']
+            else:
+                level = 2
+            fn = 'straddle_continuous_bar_{}.csv'.format(level)
+        else:
+            self.error(u'错误的组合类型')
+            return
+
         if end is None:
             today = self.jqsdk.today
             end = self.jqsdk.getPreTradeDay(today)
             end = dateToStr(end)
 
-        fp = os.path.join(self.jqsdk.getResearchPath(OPTION, 'dailytask'), 'atm_continuous_bar.csv')
+        fp = os.path.join(self.jqsdk.getResearchPath(OPTION, 'dailytask'), fn)
         if not os.path.exists(fp):
-            self.getAtmNextTradeDayBar('2017-01-01', end)
+            self.getNeutralNextTradeDayBar('2017-01-01', end, group=group, *args, **kwargs)
         else:
             df = pd.read_csv(fp, index_col=0, parse_dates=True)
             lastDay = df.index.tolist()[-1].strftime('%Y-%m-%d')
+            print(lastDay)
+            print(end)
             if strToDate(lastDay) >= strToDate(end):
-                self.info('It is newest.')
+                self.info(u'中性组合的分钟线数据是最新的！')
             else:
-                df_new = self.getAtmNextTradeDayBar(lastDay, end)
+                df_new = self.getNeutralNextTradeDayBar(lastDay, end, group=group, *args, **kwargs)
                 df = df.append(df_new)
                 df.to_csv(fp)
 
@@ -1118,13 +1160,18 @@ class SellBuyRatioPlotter(LoggerWrapper):
         atmStrikePrice = df.strikePrice.values[0]
 
         strikePriceList = self.strikePriceGroupedContractDict.keys()
-        # print(atmStrikePrice, strikePriceList)
         strikePriceList.sort()
+        print(atmStrikePrice, strikePriceList)
         atmIndex = strikePriceList.index(atmStrikePrice)
 
-        callStrikePrice = strikePriceList[atmIndex + level]
-        putStrikePrice = strikePriceList[atmIndex - level]
-        print(callStrikePrice, putStrikePrice)
+        try:
+            callStrikePrice = strikePriceList[atmIndex + level]
+            putStrikePrice = strikePriceList[atmIndex - level]
+            print(callStrikePrice, putStrikePrice)
+        except IndexError:
+            # 部分时间波动较大，导致平值上下的档位不足，则不采集当日的数据。
+            self.info(u'档位不足！')
+            return None
 
         callDf = self.strikePriceGroupedContractDict[callStrikePrice]
         onlyCallDf = callDf[callDf.trading_code.map(lambda code: 'C' in code)]

@@ -5,6 +5,9 @@ import csv
 import os
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
+import seaborn as sns
+import tushare as ts
 
 from copy import copy
 from datetime import datetime, time
@@ -13,13 +16,106 @@ from easeData.const import *
 from easeData.analyze import get_qvix_data
 from easeData.analyze import KlinePlotter
 
+sns.set()
 
-def analyze_qvix_high_open():
+
+def get_50etf_data():
+    df = ts.get_k_data('510050', start='2005-02-23')
+    return df
+
+
+def load_qvix_data():
     filename = 'vixBar.csv'
     fp = os.path.join(getDataDir(), RESEARCH, OPTION, 'qvix', filename)
     df = pd.read_csv(fp, index_col=0, parse_dates=True)
     df = df[datetime(2016, 6, 13):]
     df = copy(df)
+    return df
+
+
+def analyze_ohlc_relationship(data, a, b, direction):
+    """
+    研究OHLC的关系
+    :param data: DataFrame
+    :param a:
+    :param b:
+    :param direction:
+    :return:
+    """
+    df = data
+    all_trade_days = len(df)
+
+    abs_change_name = '{}_{}_abs'.format(a, b)
+    relative_change_name = '{}_{}_ratio'.format(a, b)
+
+    df[abs_change_name] = df[b] - df[a]
+    df[relative_change_name] = (df[abs_change_name] / df[a]) * 100
+
+    if direction == 'up':
+        df2 = df[df[abs_change_name] > 0]
+        zh_cn = u'大于'
+    elif direction == 'down':
+        df2 = df[df[abs_change_name] < 0]
+        zh_cn = u'小于'
+    else:
+        print('Wrong Direction')
+        return
+
+    df2 = copy(df2)
+    select_trade_days = len(df2)
+    select_ratio = float(select_trade_days) / float(all_trade_days) * 100
+
+    for i in [5, 10, 20]:
+        abs_ma_name = '{}_{}_ma{}'.format(a[0], b[0], i)
+        df2[abs_ma_name] = df2[abs_change_name].rolling(i).mean()
+        ratio_ma_name = '{}_{}_ratio_ma{}'.format(a[0], b[0], i)
+        df2[ratio_ma_name] = df2[relative_change_name].rolling(i).mean()
+
+    new_file = 'vix_bar_{}_{}_ma.csv'.format(a, b)
+    fp2 = os.path.join(getDataDir(), RESEARCH, OPTION, 'qvix', new_file)
+    df2.to_csv(fp2)
+
+    print('-' * 30)
+    print(u'自2016-6-13以来，期权论坛波值{}{}{}的交易统计：'.format(b, zh_cn, a))
+    print('-' * 30)
+    print(u'总交易日：%s' % all_trade_days)
+    print(u'%s%s%s的交易日：%s， 占比：%.3f %%' % (b, zh_cn, a, select_trade_days, select_ratio))
+
+    # for n in range(0, 15):
+    #     ratio_array = df2[relative_change_name].values()
+    #     count = len(ratio_array)
+
+    # df_n = df[df['h-o-ratio'] > n]
+    # c_n = len(df_n)
+    # print(u'百分比超过%s交易日：%s，占比：%.3f %%' % (n, c_n, (float(c_n) / float(h_gt_o_trade_days)) * 100))
+
+    fig = plt.figure(figsize=(16, 12))
+    ax1 = fig.add_subplot(2, 1, 1)
+    ax2 = fig.add_subplot(2, 1, 2)
+    ax1.set_title(u'Ratio({} to {}) Distribution'.format(a, b))
+    ax2.set_title(u'Ratio({} to {}) Cumulative Distribution'.format(a, b))
+
+    plt.subplots_adjust(hspace=0.2)
+
+    data = df[relative_change_name].values
+    sns.distplot(data, bins=100, color='g', ax=ax1)
+    sns.kdeplot(data, color='r', cumulative=True, ax=ax2)
+
+    # ax1.set_xticks(ax1.get_xticks() / 2)
+    # ax2.set_xticks(ax2.get_xticks() / 2)
+    # ax1.set_yticks(ax1.get_yticks() / 2)
+    # ax2.set_yticks(ax2.get_yticks() / 2)
+
+    ax1.xaxis.set_major_locator(ticker.MultipleLocator(5))
+    ax2.xaxis.set_major_locator(ticker.MultipleLocator(5))
+    ax2.yaxis.set_major_locator(ticker.MultipleLocator(0.1))
+
+    filename = '{}_{}_relationship.png'.format(a, b)
+    fig.savefig(getTestPath(filename))
+
+
+def analyze_qvix_high_open():
+    df = load_qvix_data()
 
     all_trade_days = len(df)
 
@@ -62,11 +158,7 @@ def analyze_qvix_high_open():
 
 
 def analyze_qvix_low_close():
-    filename = 'vixBar.csv'
-    fp = os.path.join(getDataDir(), RESEARCH, OPTION, 'qvix', filename)
-    df = pd.read_csv(fp, index_col=0, parse_dates=True)
-    df = df[datetime(2016, 6, 13):]
-    df = copy(df)
+    df = load_qvix_data()
 
     all_trade_days = len(df)
 
@@ -109,11 +201,7 @@ def analyze_qvix_low_close():
 
 
 def analyze_qvix_high_close():
-    filename = 'vixBar.csv'
-    fp = os.path.join(getDataDir(), RESEARCH, OPTION, 'qvix', filename)
-    df = pd.read_csv(fp, index_col=0, parse_dates=True)
-    df = df[datetime(2016, 6, 13):]
-    df = copy(df)
+    df = load_qvix_data()
 
     all_trade_days = len(df)
 
@@ -205,28 +293,51 @@ def analyze_qvix():
     df['open_change'].hist(bins=100, cumulative=True, normed=True)
 
 
-def get_atm_continuous_bar():
-    """获取分钟线数据"""
-    filename = 'atm_continuous_bar.csv'
-    fp = os.path.join(getDataDir(), 'research', 'option', 'dailytask', 'atm_continuous_bar.csv')
+def get_neutral_continuous_bar(group='atm', level=1):
+    """
+    获取中性组合的分钟bar
+    :param group: str, 'atm' or 'straddle'
+    :param level:
+    :return:
+    """
+    if group == 'atm':
+        filename = 'atm_continuous_bar.csv'
+    elif group == 'straddle':
+        filename = 'straddle_continuous_bar_{}.csv'.format(level)
+    else:
+        return
+    fp = os.path.join(getDataDir(), 'research', 'option', 'dailytask', filename)
     df = pd.read_csv(fp, index_col=0, parse_dates=True)
     return df
 
 
-def get_atm_ohlc_d():
-    """分钟线合成日线"""
+def get_ohlc_daily(data):
+    """
+    分钟线合成日线
+    :param data: pd.DataFrame
+    :return:
+    """
     ohlc_dict = {'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last'}
-    df = get_atm_continuous_bar()
-    df = df.resample('D').apply(ohlc_dict).dropna()
+    df = data.resample('D').apply(ohlc_dict).dropna()
     return df
 
 
-def plot_atm_ohlc_d():
-    """输出k线图"""
-    df = get_atm_ohlc_d()
+def plot_atm_ohlc_daily():
+    """输出平值期权组合连续日k线图"""
+    df = get_neutral_continuous_bar()
+    df = get_ohlc_daily(df)
     plotter = KlinePlotter(df)
     plotter.plotAll('ATM Option', 'atm_ohlc_daily.html', item=['ma'])
     print('Plot ATM daily ohlc completely.')
+
+
+def plot_straddle_ohlc_daily(level=1):
+    """输出宽跨式期权组合日k线图"""
+    df = get_neutral_continuous_bar(group='straddle', level=level)
+    df = get_ohlc_daily(df)
+    plotter = KlinePlotter(df)
+    plotter.plotAll('Straddle Option Level:{}'.format(level), 'straddle_{}_ohlc_daily.html'.format(level), item=['ma'])
+    print('Plot Straddle-{} daily ohlc completely.'.format(level))
 
 
 def analyze_atm_range(start_time, end_time):
@@ -337,4 +448,20 @@ if __name__ == '__main__':
     # analyze_qvix_low_close()
     # analyze_qvix_high_close()
 
-    plot_atm_ohlc_d()
+    plot_atm_ohlc_daily()
+    plot_straddle_ohlc_daily(level=1)
+    plot_straddle_ohlc_daily(level=2)
+    plot_straddle_ohlc_daily(level=3)
+
+    # vix_data = load_qvix_data()
+    # analyze_ohlc_relationship(vix_data, 'open', 'close', 'down')
+    # analyze_ohlc_relationship(vix_data, 'open', 'low', 'down')
+    # analyze_ohlc_relationship(vix_data, 'open', 'high', 'up')
+    # analyze_ohlc_relationship(vix_data, 'low', 'close', 'up')
+
+
+    # etf_data = get_50etf_data()
+    # analyze_ohlc_relationship(etf_data, 'open', 'close', 'up')
+
+    # pa = ts.get_k_data('300280', '2001-01-01')
+    # analyze_ohlc_relationship(pa, 'open', 'close', 'up')
