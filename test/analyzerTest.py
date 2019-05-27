@@ -4,7 +4,8 @@ import unittest
 import os
 from datetime import datetime
 from easeData.functions import getTestPath
-from easeData.analyze import CorrelationAnalyzer, PositionDiffPlotter, SellBuyRatioPlotter, QvixPlotter
+from easeData.analyze import (CorrelationAnalyzer, PositionDiffPlotter, SellBuyRatioPlotter, QvixPlotter,
+                              NeutralContractAnalyzer)
 from easeData.functions import dateToStr
 
 corrAnalyzer = CorrelationAnalyzer()
@@ -125,6 +126,25 @@ class TestPositionDiffTrend(unittest.TestCase):
             self.obj.setQueryMonth(m)
             self.obj.plotData(self.obj.getPosition)
             self.obj.cleanCache()
+
+
+class TestNeutralAnalyzer(unittest.TestCase):
+    def setUp(self):
+        self.obj = NeutralContractAnalyzer('510050.XSHG')
+
+        filename = 'option_daily_2019-05-27.csv'
+        self.fp = os.path.join(self.obj.jqsdk.getPricePath('option', 'daily'), filename)
+
+    def testGetNearbyContract(self):
+        df = self.obj.getNearbyContract(self.fp)
+        df.to_csv(getTestPath('NearbyContract_new.csv'))
+
+    def testGetAtmContract(self):
+        df = self.obj.getAtmContract(self.fp, method='match')
+        df.to_csv(getTestPath('atm_contract_match.csv'))
+
+        df = self.obj.getAtmContract(self.fp, method='simple')
+        df.to_csv(getTestPath('atm_contract_simple.csv'))
 
 
 class TestSellBuyRatioPlotter(unittest.TestCase):

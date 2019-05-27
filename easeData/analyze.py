@@ -1778,6 +1778,197 @@ class SellBuyRatioPlotter(LoggerWrapper):
         page.render(os.path.join(outputDir, '50etf_money_flow.html'))
 
 
+class NeutralContractAnalyzer(LoggerWrapper):
+    """
+    Delta中性组合分析
+    """
+
+    def __init__(self, underlyingSymbol):
+        super(NeutralContractAnalyzer, self).__init__()
+
+        self.jqsdk = JQDataCollector()
+        self.underlyingSymbol = underlyingSymbol
+
+        self.start = '2017-01-01'
+        self.today = self.jqsdk.today
+
+        # 数据缓存
+        self.contractInfo = None
+        self.underlyingPrice = None
+
+        self.contractTypeDict = None
+        self.tradingCodeDict = None
+        self.lastTradeDateDict = None
+        self.underlyingDict = None
+
+        self.strikePriceGroupedContractDict = None
+
+    def getContractInfo(self):
+        """
+        获取期权合约的基础信息，并做缓存。
+        :return: pd.DataFrame
+        """
+        if self.contractInfo is None:
+            filename = u'{}_{}.csv'.format(OPTION, BASIC)
+            path = os.path.join(self.jqsdk.getBasicPath(OPTION), filename)
+            df = pd.read_csv(path, index_col=0)
+            mask = (df.underlying_symbol == self.underlyingSymbol)
+            df = df[mask]
+            df = df.set_index('code')
+            self.contractInfo = df
+        return self.contractInfo
+
+    def getUnderlyingPrice(self):
+        """
+        获取期权标的的价格数据
+        :return:
+        """
+        if self.underlyingPrice is None:
+            end = dateToStr(self.today)
+            df = self.jqsdk.get_price(self.underlyingSymbol, start_date=self.start, end_date=end, fq=None)
+            self.underlyingPrice = df
+        return self.underlyingPrice
+
+    def codeToTradingCode(self, code):
+        """
+        获取交易代码（下单用）- 合约编码（期权详情的简码）的映射，并缓存。
+        :param code: string
+                合约编码
+        :return: string
+                合约交易代码
+        """
+        if self.tradingCodeDict is None:
+            df = self.getContractInfo()
+            self.tradingCodeDict = df['trading_code'].to_dict()
+        return self.tradingCodeDict.get(code, None)
+
+    def codeToLastTradeDate(self, code):
+        """
+        获取交易代码（下单用）- 合约最后交易日的映射，并缓存。
+        :param code: string
+                合约编码
+        :return: string
+                合约最后交易日
+        """
+        if self.lastTradeDateDict is None:
+            df = self.getContractInfo()
+            self.lastTradeDateDict = df['last_trade_date'].to_dict()
+        return self.lastTradeDateDict.get(code, None)
+
+    def codeToContractType(self, code):
+        """
+        获取交易代码（下单用）- 看涨看跌类型简码的映射，并缓存
+        :param code: string
+                合约编码
+        :return: string
+                看涨看跌类型简码
+        """
+        if self.contractTypeDict is None:
+            df = self.getContractInfo()
+            self.contractTypeDict = df['contract_type'].to_dict()
+        return self.contractTypeDict.get(code, None)
+
+    def codeToUnderlying(self, code):
+        """
+        获取交易代码（下单用）- 标的编码的映射，并缓存
+        :param code: str
+        :return:
+        """
+
+        if self.underlyingDict is None:
+            df = self.getContractInfo()
+            self.underlyingDict = df['underlying_symbol'].to_dict()
+        return self.underlyingDict.get(code, None)
+
+    def getNearbyContract(self, fp, keepCurrent=False):
+        """
+        从每日价格表中选出当月合约，如果距离到期日不足7日，则选下月合约，每日分析，不需要缓存。
+        :param fp: filePath
+                某个交易日的所有期权合约日行情数据
+        :param keepCurrent: Bool
+                是否使用当月合约（不切换到下月）
+        :return: pd.DataFrame
+        """
+        df = pd.read_csv(fp, index_col=0)
+
+        # 筛选出匹配标的合约
+        df['underlying_symbol'] = df['code'].map(self.codeToUnderlying)
+        df = df[df['underlying_symbol'] == self.underlyingSymbol]
+        df = copy(df)
+
+        df['last_trade_date'] = df['code'].map(self.codeToLastTradeDate)
+        df['trading_code'] = df['code'].map(self.codeToTradingCode)
+        df['contract_type'] = df['code'].map(self.codeToContractType)
+        df['month'] = df['trading_code'].map(lambda tradingCode: int(tradingCode[7: 11]))
+        df['strikePrice'] = df['trading_code'].map(lambda x: int(x[-4:]))
+        df['isHasM'] = df['trading_code'].map(lambda x: x[11] == 'M')
+
+        if df['isHasM'].any():
+            df = df[df.isHasM]
+
+        monthList = df['month'].drop_duplicates().tolist()
+        monthList.sort()
+        thisMonth, nextMonth = monthList[0], monthList[1]
+
+        df_current = df[df.month == thisMonth]
+        date = strToDate(df_current['date'].iloc[0])
+        lastDate = strToDate(df_current['last_trade_date'].iloc[0])
+        if lastDate - date > timedelta(days=7) or keepCurrent is True:
+            resDf = df_current
+        else:
+            df_next = df[df.month == nextMonth]
+            resDf = df_next
+        return resDf
+
+    def getAtmContract(self, fp, method, keepCurrent=False):
+        """
+        获取某个交易日的平值期权合约数据，并按行权价分组保存当日的合约基础数据。
+        :param fp: filepath instance
+                日行情数据csv文件路径
+        :param method: str, 'simple' or 'match'.
+                simple-选取同一行权价价差最小的组合；match选择标的收盘价附近的价差最小的沽购组合（可能会不同行权价）
+        :param keepCurrent: Bool
+                是否使用当月合约（不切换到下月）
+        :return: pd.DataFrame
+        """
+        self.info(u'从行情数据{}，分析当日平值期权'.format(os.path.basename(fp)))
+        df = self.getNearbyContract(fp, keepCurrent)
+
+        if method == 'simple':
+            # 按行权价分组，并计算认购和认购的权利金价差，存入列表，通过排序得出平值期权
+            grouped = df.groupby('strikePrice')
+            groupedDict = dict(list(grouped))
+            spreadList = []
+            for strikePrice, df in groupedDict.items():
+                close = df.close.tolist()
+                spread = abs(close[0] - close[1])
+                spreadList.append((strikePrice, spread))
+            spreadList.sort(key=lambda x: (x[1], x[0]))  # 以元祖的第二项(即价差)优先排序
+
+            # 获取平值卖购和卖沽的价和数据
+            atmStrike = spreadList[0][0]  # 取平值期权的行权价
+            atmDf = groupedDict.get(atmStrike)  # 获取保存平值期权两个合约的dataframe
+        elif method == 'match':
+            dt = strToDate(df['date'].iloc[0])
+            underlyingClose = self.getUnderlyingPrice().close[dt]
+
+            df.sort_values(by='strikePrice', inplace=True)
+            callDf = df[df.contract_type == 'CO']
+            putDf = df[df.contract_type == 'PO']
+            callLeg = callDf[callDf.strikePrice > underlyingClose * 1000].iloc[0]
+
+            spreadClose = abs(putDf.close - callLeg.close)
+            spreadClose.sort_values(inplace=True)
+            putLegIdx = spreadClose.index[0]
+            putLeg = putDf.loc[putLegIdx]
+            atmDf = pd.concat([callLeg, putLeg], axis=1)
+            atmDf = atmDf.T
+        else:
+            self.info(u'错误的分析方法！')
+            return
+        return atmDf
+
+
 class QvixPlotter(LoggerWrapper):
     """
     Qvix日线行情绘图器。
