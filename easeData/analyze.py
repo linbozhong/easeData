@@ -23,7 +23,7 @@ from pyecharts import Page, Overlap
 from database import MongoDbConnector
 from base import LoggerWrapper
 from collector import JQDataCollector
-from functions import (strToDate, dateToStr, getTestPath, getDataDir, roundFloat, getLastFriday)
+from functions import (strToDate, dateToStr, getTestPath, getDataDir, roundFloat, getLastFriday, saveCsv)
 from const import *
 from text import *
 
@@ -1802,6 +1802,9 @@ class NeutralContractAnalyzer(LoggerWrapper):
         self.underlyingDict = None
 
         self.strikePriceGroupedContractDict = None
+        self.calls = None
+        self.puts = None
+        self.underlyingClose = None
 
     def getContractInfo(self):
         """
@@ -1824,8 +1827,22 @@ class NeutralContractAnalyzer(LoggerWrapper):
         :return:
         """
         if self.underlyingPrice is None:
-            end = dateToStr(self.today)
-            df = self.jqsdk.get_price(self.underlyingSymbol, start_date=self.start, end_date=end, fq=None)
+            end = self.today
+            fn = '{}_daily.csv'.format(self.underlyingSymbol.split('.')[0])
+            fp = os.path.join(self.jqsdk.getResearchPath(OPTION, 'atm'), fn)
+
+            if not os.path.exists(fp):
+                df = self.jqsdk.get_price(self.underlyingSymbol, start_date='2005-02-23', end_date=end, fq=None)
+                df = df[df.volume != 0]
+                saveCsv(df, fp)
+            else:
+                df = pd.read_csv(fp, index_col=0, parse_dates=True)
+                lastDay = df.index.tolist()[-1] + timedelta(days=1)
+                if lastDay < end:
+                    df_new = self.jqsdk.get_price(self.underlyingSymbol, lastDay, end, fq=None)
+                    df_new = df_new[df_new.volume != 0]
+                    df = df.append(df_new)
+                    saveCsv(df, fp)
             self.underlyingPrice = df
         return self.underlyingPrice
 
@@ -1903,11 +1920,9 @@ class NeutralContractAnalyzer(LoggerWrapper):
         df['strikePrice'] = df['trading_code'].map(lambda x: int(x[-4:]))
         df['isHasM'] = df['trading_code'].map(lambda x: x[11] == 'M')
 
-        if df['isHasM'].any():
-            df = df[df.isHasM]
-
         monthList = df['month'].drop_duplicates().tolist()
         monthList.sort()
+        # print(monthList)
         thisMonth, nextMonth = monthList[0], monthList[1]
 
         df_current = df[df.month == thisMonth]
@@ -1922,8 +1937,8 @@ class NeutralContractAnalyzer(LoggerWrapper):
 
     def getAtmContract(self, fp, method, keepCurrent=False):
         """
-        获取某个交易日的平值期权合约数据，并按行权价分组保存当日的合约基础数据。
-        :param fp: filepath instance
+        获取某个交易日的平值期权合约。
+        :param fp: filepath
                 日行情数据csv文件路径
         :param method: str, 'simple' or 'match'.
                 simple-选取同一行权价价差最小的组合；match选择标的收盘价附近的价差最小的沽购组合（可能会不同行权价）
@@ -1931,8 +1946,11 @@ class NeutralContractAnalyzer(LoggerWrapper):
                 是否使用当月合约（不切换到下月）
         :return: pd.DataFrame
         """
-        self.info(u'从行情数据{}，分析当日平值期权'.format(os.path.basename(fp)))
+        self.info(u'分析当日平值期权:{}'.format(os.path.basename(fp)))
         df = self.getNearbyContract(fp, keepCurrent)
+        # 筛选M合约放在平值期权的函数，防止有的月份某日都是A的，导致没有选到当月数据
+        if df['isHasM'].any():
+            df = df[df.isHasM]
 
         if method == 'simple':
             # 按行权价分组，并计算认购和认购的权利金价差，存入列表，通过排序得出平值期权
@@ -1948,6 +1966,7 @@ class NeutralContractAnalyzer(LoggerWrapper):
             # 获取平值卖购和卖沽的价和数据
             atmStrike = spreadList[0][0]  # 取平值期权的行权价
             atmDf = groupedDict.get(atmStrike)  # 获取保存平值期权两个合约的dataframe
+            self.strikePriceGroupedContractDict = groupedDict
         elif method == 'match':
             dt = strToDate(df['date'].iloc[0])
             underlyingClose = self.getUnderlyingPrice().close[dt]
@@ -1955,7 +1974,14 @@ class NeutralContractAnalyzer(LoggerWrapper):
             df.sort_values(by='strikePrice', inplace=True)
             callDf = df[df.contract_type == 'CO']
             putDf = df[df.contract_type == 'PO']
-            callLeg = callDf[callDf.strikePrice > underlyingClose * 1000].iloc[0]
+
+            # print(underlyingClose)
+            # print(callDf.strikePrice.values)
+            try:
+                callLeg = callDf[callDf.strikePrice > underlyingClose * 1000].iloc[0]
+            except IndexError:
+                # 若日内波动太大，标的价格超出最虚档，只能选用最虚档
+                callLeg = callDf.iloc[-1]
 
             spreadClose = abs(putDf.close - callLeg.close)
             spreadClose.sort_values(inplace=True)
@@ -1963,10 +1989,289 @@ class NeutralContractAnalyzer(LoggerWrapper):
             putLeg = putDf.loc[putLegIdx]
             atmDf = pd.concat([callLeg, putLeg], axis=1)
             atmDf = atmDf.T
+
+            self.calls = callDf
+            self.puts = putDf
+            self.underlyingClose = underlyingClose
         else:
             self.info(u'错误的分析方法！')
             return
         return atmDf
+
+    def getStraddleContract(self, fp, method, level=1, **kwargs):
+        """
+        获取某个交易日的平值期权合约。
+        :param fp: filepath
+                日行情数据csv文件路径
+        :param method: str, 'simple' or 'match'.
+                参考getAtmContract的method
+        :param level: int
+                虚值多少档
+        :return: pd.DataFrame
+        """
+
+        if method == 'simple':
+            df = self.getAtmContract(fp, method, **kwargs)
+            atmStrikePrice = df.strikePrice.values[0]
+
+            strikePriceList = self.strikePriceGroupedContractDict.keys()
+            strikePriceList.sort()
+            print(atmStrikePrice, strikePriceList)
+            atmIndex = strikePriceList.index(atmStrikePrice)
+
+            try:
+                callStrikePrice = strikePriceList[atmIndex + level]
+                putStrikePrice = strikePriceList[atmIndex - level]
+            except IndexError:
+                # 部分时间波动较大，导致平值上下的档位不足，则不采集当日的数据。
+                self.info(u'档位超出所有行权价范围！')
+                return
+
+            callDf = self.strikePriceGroupedContractDict[callStrikePrice]
+            onlyCallDf = callDf[callDf.trading_code.map(lambda code: 'C' in code)]
+            putDf = self.strikePriceGroupedContractDict[putStrikePrice]
+            onlyPutDf = putDf[putDf.trading_code.map(lambda code: 'P' in code)]
+
+            resDf = pd.concat([onlyCallDf, onlyPutDf])
+            return resDf
+        elif method == 'match':
+            df = self.getAtmContract(fp, method, **kwargs)
+            callStrikePrice = df[df.contract_type == 'CO'].iloc[0].strikePrice
+            putStrikePrice = df[df.contract_type == 'PO'].iloc[0].strikePrice
+
+            # print(callStrikePrice, putStrikePrice)
+            strikePriceList = self.calls.strikePrice.to_list()
+            # print(strikePriceList)
+            try:
+                callIdx = strikePriceList.index(callStrikePrice) + level
+                putIdx = strikePriceList.index(putStrikePrice) - level
+                if putIdx < 0:
+                    self.error(u'档位不足！')
+                    return
+                callLeg = self.calls[self.calls.strikePrice == strikePriceList[callIdx]]
+                putLeg = self.puts[self.puts.strikePrice == strikePriceList[putIdx]]
+                resDf = pd.concat([callLeg, putLeg])
+                # print(resDf)
+                return resDf
+            except IndexError:
+                self.error(u'档位超出所有行权价范围！')
+                return
+
+    def getNeutralNextTradeDayBar(self, start, end, group='atm', method='match', *arg, **kwargs):
+        """
+        获取delta中性组合（平值或宽跨式组合）次交易日的连续分钟线数据汇总。
+        :param start: str
+        :param end: str
+        :param group: str. 'atm' or 'straddle'
+        :param method: str. 'simple' or 'match'
+        :return:
+        """
+        if group == 'atm':
+            func = self.getAtmContract
+            save_fn = 'atm_continuous_bar_{}.csv'.format(method)
+        elif group == 'straddle':
+            func = self.getStraddleContract
+            if 'level' in kwargs:
+                level = kwargs['level']
+            else:
+                level = 1
+            save_fn = 'straddle_{}_continuous_bar_{}.csv'.format(level, method)
+        else:
+            self.error(u'错误的组合类型')
+            return
+
+        tradeDays = self.jqsdk.get_trade_days(start, end)
+
+        allList = []
+        for tradeDay in tradeDays:
+            self.info(u'获取delta中性组合分钟数据：{}'.format(dateToStr(tradeDay)))
+            startDt = datetime.combine(tradeDay, time(16, 0, 0))
+            nextTradeDay = self.jqsdk.getNextTradeDay(startDt)
+            endDt = datetime.combine(nextTradeDay, time(16, 0, 0))
+            if endDt >= datetime.now():
+                self.info(u'该交易日尚未结束，数据尚未更新！')
+                break
+
+            fn = 'option_daily_{}.csv'.format(dateToStr(tradeDay))
+            fp = os.path.join(self.jqsdk.getPricePath('option', 'daily'), fn)
+            groupDf = func(fp, method=method, *arg, **kwargs)
+            if groupDf is None:
+                continue
+            month = groupDf.month.values[0]
+            callLabel = str(groupDf.iloc[0]['strikePrice']) + groupDf.iloc[0]['contract_type'][0]
+            putLabel = str(groupDf.iloc[1]['strikePrice']) + groupDf.iloc[1]['contract_type'][0]
+            groupLabel = '-'.join([callLabel, putLabel])
+
+            legList = []
+            for idx, series in groupDf.iterrows():
+                df = self.jqsdk.get_price(series['code'], start_date=startDt, end_date=endDt, frequency='1m')
+                legList.append(df)
+            df = legList[0] + legList[1]
+            df['tradeDay'] = dateToStr(endDt)
+            df['month'] = month
+            df['groupLabel'] = groupLabel
+            df['underlyingClose'] = self.underlyingClose
+
+            allList.append(df)
+        df = pd.concat(allList)
+
+        save_fp = os.path.join(self.jqsdk.getResearchPath(OPTION, 'atm'), save_fn)
+        saveCsv(df, save_fp)
+        return df
+
+    def updateNeutralNextTradeDayBar(self, end=None, group='atm', method='match', *args, **kwargs):
+        """
+        更新delta中性组合（平值或宽跨式组合）次交易日的连续分钟线数据。
+        :param end: str
+        :param group: str. 'atm' or 'straddle'
+        :param method: str. 'match' or 'simple'
+        :return:
+        """
+        if group == 'atm':
+            fn = 'atm_continuous_bar_{}.csv'.format(method)
+        elif group == 'straddle':
+            if 'level' in kwargs:
+                level = kwargs['level']
+            else:
+                level = 1
+            fn = 'straddle_{}_continuous_bar_{}.csv'.format(level, method)
+        else:
+            self.error(u'错误的组合类型')
+            return
+
+        if end is None:
+            today = self.jqsdk.today
+            end = self.jqsdk.getPreTradeDay(today)
+            end = dateToStr(end)
+
+        fp = os.path.join(self.jqsdk.getResearchPath(OPTION, 'atm'), fn)
+        if not os.path.exists(fp):
+            self.getNeutralNextTradeDayBar('2017-01-01', end, group=group, method=method, *args, **kwargs)
+        else:
+            df = pd.read_csv(fp, index_col=0, parse_dates=True)
+            lastDay = df.index.tolist()[-1].strftime('%Y-%m-%d')
+            if strToDate(lastDay) >= strToDate(end):
+                self.info(u'中性组合的分钟线数据是最新的！')
+            else:
+                df_new = self.getNeutralNextTradeDayBar(lastDay, end, group=group, method=method, *args, **kwargs)
+                df = df.append(df_new)
+                saveCsv(df, fp)
+
+    def loadNeutralContinuousBar(self, group='atm', method='match', level=1):
+        """
+        获取中性组合的分钟bar
+        :param group: str. 'atm' or 'straddle'
+        :param method: str. 'simple' or 'match'
+        :param level: int
+        :return:
+        """
+        if group == 'atm':
+            fn = 'atm_continuous_bar_{}.csv'.format(method)
+        elif group == 'straddle':
+            fn = 'straddle_{}_continuous_bar_{}.csv'.format(level, method)
+        else:
+            return
+        fp = os.path.join(self.jqsdk.getResearchPath(OPTION, 'atm'), fn)
+        df = pd.read_csv(fp, index_col=0, parse_dates=True)
+        return df
+
+    def getOHLCdaily(self, *args, **kwargs):
+        """
+        分钟线合成日线
+        :param data: pd.DataFrame
+        :return:
+        """
+        basicInfo = ['open', 'high', 'low', 'close']
+        addInfo = ['tradeDay', 'month', 'groupLabel', 'underlyingClose']
+        addInfoDict = {k: 'first' for k in addInfo}
+        ohlcDict = {'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last'}
+        ohlcDict.update(addInfoDict)
+
+        basicInfo.extend(addInfo)
+        data = self.loadNeutralContinuousBar(*args, **kwargs)
+        # print(data)
+        df = data.resample('D').apply(ohlcDict).dropna(how='all')
+        df = df[basicInfo]
+        return df
+
+    def removeOHLCgap(self, df=None, *args, **kwargs):
+        """
+        消除期权组合（每日合约可能不同）非交易因素造成的跳空。
+        :return:
+        """
+        name_dict = {'open_new': 'open', 'high_new': 'high', 'low_new': 'low', 'close_new': 'close'}
+
+        if df is None:
+            df = self.getOHLCdaily(*args, **kwargs)
+
+        # 计算当日相对开盘价的涨跌幅
+        df['open_rate'] = 0
+        df['low_rate'] = (df['low'] - df['open']) / df['open']
+        df['high_rate'] = (df['high'] - df['open']) / df['open']
+        df['close_rate'] = (df['close'] - df['open']) / df['open']
+
+        # 通过收盘价的累计值计算新起点，并在新起点基础上叠加今日的波动
+        df['close_rate_cul'] = df['close_rate'].cumsum()
+        df['open_new'] = df['close_rate_cul'].shift(1)
+        df.fillna(value=0, inplace=True)
+        df['high_new'] = df['open_new'] + df['high_rate']
+        df['low_new'] = df['open_new'] + df['low_rate']
+        df['close_new'] = df['open_new'] + df['close_rate']
+
+        df = df[['open_new', 'high_new', 'low_new', 'close_new']]
+        df = df.rename(columns=name_dict)
+        return df
+
+    def removeGapByMonth(self, *args, **kwargs):
+        """
+        按期权合约月份分组消除跳空
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        df = self.getOHLCdaily(*args, **kwargs)
+        df = df.groupby(by='month').apply(self.removeOHLCgap)
+        return df
+
+    def plotAtmOHLC(self, method='match', isGap=True):
+        """
+        输出平值期权组合连续日k线图
+        :param isGap:
+        :param method:
+        :return:
+        """
+        if isGap:
+            name_flag = 'gap'
+            df = self.getOHLCdaily(group='atm', method=method)
+        else:
+            name_flag = 'nogap'
+            df = self.removeGapByMonth(group='atm', method=method)
+
+        fn = 'atm_{}_ohlc_daily_{}.html'.format(method, name_flag)
+
+        plotter = KlinePlotter(df)
+        plotter.plotAll('ATM-{}-{} method'.format(method, name_flag), 'atm', fn, item=['ma'])
+        self.info(u'平值期权{}-{}日K绘制完成'.format(method, name_flag))
+
+    def plotStraddleOHLC(self, method='match', isGap=True, level=1):
+        """
+        输出宽跨式期权组合日k线图
+        :param method:
+        :param level:
+        :return:
+        """
+        if isGap:
+            name_flag = 'gap'
+            df = self.getOHLCdaily(group='straddle', method=method, level=level)
+        else:
+            name_flag = 'nogap'
+            df = self.removeGapByMonth(group='straddle', method=method, level=level)
+
+        fn = 'straddle_{}_{}_ohlc_daily_{}.html'.format(level, method, name_flag)
+
+        plotter = KlinePlotter(df)
+        plotter.plotAll('Straddle-{}-{}-{}'.format(level, method, name_flag), 'atm', fn, item=['ma'])
+        self.info(u'宽跨式{}档-{}-{}日K绘制完成'.format(level, method, name_flag))
 
 
 class QvixPlotter(LoggerWrapper):
@@ -2461,7 +2766,7 @@ class KlinePlotter(LoggerWrapper):
         return overlap
         # overlap.render(getTestPath('qvixkline_boll.html'))
 
-    def plotAll(self, title, filename, item=None):
+    def plotAll(self, title, path, filename, item=None):
         """
         按顺序绘制所有的叠加图
         :return:
@@ -2488,7 +2793,7 @@ class KlinePlotter(LoggerWrapper):
                 page.add(boll)
 
         # htmlName = 'qvix_daily.html'
-        outputDir = self.jqsdk.getResearchPath(OPTION, 'dailytask')
+        outputDir = self.jqsdk.getResearchPath(OPTION, path)
         page.render(os.path.join(outputDir, filename))
 
 

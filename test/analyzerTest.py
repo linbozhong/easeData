@@ -132,12 +132,15 @@ class TestNeutralAnalyzer(unittest.TestCase):
     def setUp(self):
         self.obj = NeutralContractAnalyzer('510050.XSHG')
 
-        filename = 'option_daily_2019-05-27.csv'
+        filename = 'option_daily_2018-02-09.csv'
         self.fp = os.path.join(self.obj.jqsdk.getPricePath('option', 'daily'), filename)
 
     def testGetNearbyContract(self):
         df = self.obj.getNearbyContract(self.fp)
-        df.to_csv(getTestPath('NearbyContract_new.csv'))
+        df.to_csv(getTestPath('nearbyContract_20190225.csv'))
+
+    def testGetUnderlying(self):
+        self.obj.getUnderlyingPrice()
 
     def testGetAtmContract(self):
         df = self.obj.getAtmContract(self.fp, method='match')
@@ -145,6 +148,60 @@ class TestNeutralAnalyzer(unittest.TestCase):
 
         df = self.obj.getAtmContract(self.fp, method='simple')
         df.to_csv(getTestPath('atm_contract_simple.csv'))
+
+    def testGetStraddleContract(self):
+        level = 1
+        df = self.obj.getStraddleContract(self.fp, method='match', level=level)
+        df.to_csv(getTestPath('straddle{}_contract_match.csv'.format(level)))
+
+        # df = self.obj.getStraddleContract(self.fp, method='simple', level=level)
+        # df.to_csv(getTestPath('straddle{}_contract_simple.csv'.format(level)))
+
+    def testGetNeutralNextTradeDayBar(self):
+        # self.obj.getNeutralNextTradeDayBar('2019-05-20', '2019-05-24')
+        self.obj.getNeutralNextTradeDayBar('2019-05-20', '2019-05-24', group='straddle', level=2)
+
+    def testUpdateNeutralNextTradeDayBar(self):
+        end = '2019-05-28'
+        method = 'simple'
+        # self.obj.updateNeutralNextTradeDayBar(end=end, group='atm', method=method)
+        self.obj.updateNeutralNextTradeDayBar(end=end, group='straddle', method=method, level=1)
+        self.obj.updateNeutralNextTradeDayBar(end=end, group='straddle', method=method, level=2)
+        self.obj.updateNeutralNextTradeDayBar(end=end, group='straddle', method=method, level=3)
+
+    def testGetOHLC(self):
+        method = 'match'
+        df = self.obj.getOHLCdaily(method=method)
+        df.to_csv(getTestPath('atm_ohlc_{}.csv'.format(method)))
+
+        # df = self.obj.getOHLCdaily(group='straddle')
+        # df.to_csv(getTestPath('straddle_1_ohlc.csv'))
+        #
+        # df = self.obj.getOHLCdaily(group='straddle', level=2)
+        # df.to_csv(getTestPath('straddle_2_ohlc.csv'))
+        #
+        # df = self.obj.getOHLCdaily(group='straddle', level=3)
+        # df.to_csv(getTestPath('straddle_3_ohlc.csv'))
+
+    def testRemoveGap(self):
+        df = self.obj.removeOHLCgap()
+        df.to_csv(getTestPath('test_atm_ohlc_remove_gap.csv'))
+
+        # df = self.obj.removeGapByMonth()
+        # df.to_csv(getTestPath('test_atm_ohlc_remove_gap_by_month.csv'))
+
+    def testPlotOHLC(self):
+        # self.obj.plotAtmOHLC()
+        # self.obj.plotStraddleOHLC()
+        # self.obj.plotStraddleOHLC(level=2)
+        # self.obj.plotStraddleOHLC(level=3)
+
+        method = 'match'
+        # self.obj.plotAtmOHLC(method=method, isGap=False)
+        self.obj.plotStraddleOHLC(method=method, isGap=False)
+        self.obj.plotStraddleOHLC(method=method, isGap=False, level=2)
+        self.obj.plotStraddleOHLC(method=method, isGap=False, level=3)
+
 
 
 class TestSellBuyRatioPlotter(unittest.TestCase):

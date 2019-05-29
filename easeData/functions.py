@@ -214,3 +214,18 @@ def getLastFriday(date=None):
     n = 1 if date.weekday() < 4 else 2
     lastFri = date + relativedelta(weekday=FR(-n))
     return datetime(lastFri.year, lastFri.month, lastFri.day)
+
+
+def saveCsv(df, fp, *args, **kwargs):
+    """
+    df存储为csv文件
+    :param df: pd.DataFrame
+    :param fp: filepath
+    :param args:
+    :param kwargs:
+    :return:
+    """
+    try:
+        df.to_csv(fp, *args, **kwargs)
+    except IOError:
+        print(u'写入文件错误！')

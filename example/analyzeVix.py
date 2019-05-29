@@ -317,8 +317,35 @@ def get_ohlc_daily(data):
     :param data: pd.DataFrame
     :return:
     """
-    ohlc_dict = {'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last'}
+    ohlc_dict = {'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last', 'tradeDay': 'first'}
     df = data.resample('D').apply(ohlc_dict).dropna()
+    return df
+
+
+def get_ohlc_daily_no_gap(df):
+    """
+    消除期权组合（每日合约可能不同）非交易因素造成的跳空。
+    :param df: pd.dataFrame
+    :return:
+    """
+    name_dict = {'open_new': 'open', 'high_new': 'high', 'low_new': 'low', 'close_new': 'close'}
+
+    # 计算当日相对开盘价的涨跌幅
+    df['open_rate'] = 0
+    df['low_rate'] = (df['low'] - df['open']) / df['open']
+    df['high_rate'] = (df['high'] - df['open']) / df['open']
+    df['close_rate'] = (df['close'] - df['open']) / df['open']
+
+    # 通过收盘价的累计值计算新起点，并在新起点基础上叠加今日的波动
+    df['close_rate_cul'] = df['close_rate'].cumsum()
+    df['open_new'] = df['close_rate_cul'].shift(1)
+    df.fillna(value=0, inplace=True)
+    df['high_new'] = df['open_new'] + df['high_rate']
+    df['low_new'] = df['open_new'] + df['low_rate']
+    df['close_new'] = df['open_new'] + df['close_rate']
+
+    df = df[['open_new', 'high_new', 'low_new', 'close_new']]
+    df.rename(columns=name_dict)
     return df
 
 
@@ -338,6 +365,13 @@ def plot_straddle_ohlc_daily(level=1):
     plotter = KlinePlotter(df)
     plotter.plotAll('Straddle Option Level:{}'.format(level), 'straddle_{}_ohlc_daily.html'.format(level), item=['ma'])
     print('Plot Straddle-{} daily ohlc completely.'.format(level))
+
+
+def plot_test_date_kline(filename):
+    fp = getTestPath(filename)
+    df = pd.read_csv(fp, index_col=0)
+    plotter = KlinePlotter(df)
+    plotter.plotAll('atm-ohlc-no-gap-test', 'atm-ohlc-no-gap-test.html', item=['ma'])
 
 
 def analyze_atm_range(start_time, end_time):
@@ -448,10 +482,10 @@ if __name__ == '__main__':
     # analyze_qvix_low_close()
     # analyze_qvix_high_close()
 
-    plot_atm_ohlc_daily()
-    plot_straddle_ohlc_daily(level=1)
-    plot_straddle_ohlc_daily(level=2)
-    plot_straddle_ohlc_daily(level=3)
+    # plot_atm_ohlc_daily()
+    # plot_straddle_ohlc_daily(level=1)
+    # plot_straddle_ohlc_daily(level=2)
+    # plot_straddle_ohlc_daily(level=3)
 
     # vix_data = load_qvix_data()
     # analyze_ohlc_relationship(vix_data, 'open', 'close', 'down')
@@ -459,9 +493,14 @@ if __name__ == '__main__':
     # analyze_ohlc_relationship(vix_data, 'open', 'high', 'up')
     # analyze_ohlc_relationship(vix_data, 'low', 'close', 'up')
 
-
     # etf_data = get_50etf_data()
     # analyze_ohlc_relationship(etf_data, 'open', 'close', 'up')
 
     # pa = ts.get_k_data('300280', '2001-01-01')
     # analyze_ohlc_relationship(pa, 'open', 'close', 'up')
+
+    # df = get_neutral_continuous_bar()
+    # df = get_ohlc_daily(df)
+    # print(df)
+
+    plot_test_date_kline('atm_ohlc_no_gap.csv')
