@@ -1778,6 +1778,16 @@ class SellBuyRatioPlotter(LoggerWrapper):
         page.render(os.path.join(outputDir, '50etf_money_flow.html'))
 
 
+class OptionUnderlyingAnalyzer(LoggerWrapper):
+    """
+    期权标的分析
+    """
+
+    def __init__(self, collector, symbol):
+        super(OptionUnderlyingAnalyzer, self).__init__()
+        pass
+
+
 class NeutralContractAnalyzer(LoggerWrapper):
     """
     Delta中性组合分析
@@ -1977,18 +1987,30 @@ class NeutralContractAnalyzer(LoggerWrapper):
 
             # print(underlyingClose)
             # print(callDf.strikePrice.values)
-            try:
-                callLeg = callDf[callDf.strikePrice > underlyingClose * 1000].iloc[0]
-            except IndexError:
-                # 若日内波动太大，标的价格超出最虚档，只能选用最虚档
-                callLeg = callDf.iloc[-1]
+            strikePriceArray = callDf.strikePrice.values
+            strikeUnderlyingSpread = abs(strikePriceArray - underlyingClose * 1000)
+            closestIdx = np.argmin(strikeUnderlyingSpread)
+            closestStrike = strikePriceArray[closestIdx]
+            if abs(closestStrike - underlyingClose * 1000) / float(closestStrike) < 0.005:
+                # print(dateToStr(dt), closestStrike, underlyingClose)
+                callLeg = callDf[callDf.strikePrice == closestStrike].iloc[0]
+                putLeg = putDf[putDf.strikePrice == closestStrike].iloc[0]
+            else:
+                try:
+                    callLeg = callDf[callDf.strikePrice > underlyingClose * 1000].iloc[0]
+                except IndexError:
+                    # 若日内波动太大，标的价格超出最虚档，只能选用最虚档
+                    callLeg = callDf.iloc[-1]
+                spreadClose = abs(putDf.close - callLeg.close)
+                spreadClose.sort_values(inplace=True)
+                putLegIdx = spreadClose.index[0]
+                putLeg = putDf.loc[putLegIdx]
 
-            spreadClose = abs(putDf.close - callLeg.close)
-            spreadClose.sort_values(inplace=True)
-            putLegIdx = spreadClose.index[0]
-            putLeg = putDf.loc[putLegIdx]
             atmDf = pd.concat([callLeg, putLeg], axis=1)
             atmDf = atmDf.T
+
+            # if callLeg.strikePrice - putLeg.strikePrice < 0:
+            #     print(u'Xu to Shi', callLeg.strikePrice, putLeg.strikePrice)
 
             self.calls = callDf
             self.puts = putDf
@@ -2057,9 +2079,9 @@ class NeutralContractAnalyzer(LoggerWrapper):
                 self.error(u'档位超出所有行权价范围！')
                 return
 
-    def getNeutralNextTradeDayBar(self, start, end, group='atm', method='match', *arg, **kwargs):
+    def getNeutralGroupInfo(self, start, end, group='atm', method='match', *arg, **kwargs):
         """
-        获取delta中性组合（平值或宽跨式组合）次交易日的连续分钟线数据汇总。
+        获取delta中性组合（平值或宽跨式组合）的基本信息。
         :param start: str
         :param end: str
         :param group: str. 'atm' or 'straddle'
@@ -2068,14 +2090,89 @@ class NeutralContractAnalyzer(LoggerWrapper):
         """
         if group == 'atm':
             func = self.getAtmContract
-            save_fn = 'atm_continuous_bar_{}.csv'.format(method)
+            save_fn = 'atm_info_{}.csv'.format(method)
         elif group == 'straddle':
             func = self.getStraddleContract
             if 'level' in kwargs:
                 level = kwargs['level']
             else:
                 level = 1
-            save_fn = 'straddle_{}_continuous_bar_{}.csv'.format(level, method)
+            save_fn = 'straddle_{}_info_{}.csv'.format(level, method)
+        else:
+            self.error(u'错误的组合类型')
+            return
+
+        infoList = []
+        tradeDays = self.jqsdk.get_trade_days(start, end)
+        for tradeDay in tradeDays:
+            self.info(u'获取delta中性组合分钟数据：{}'.format(dateToStr(tradeDay)))
+            fn = 'option_daily_{}.csv'.format(dateToStr(tradeDay))
+            fp = os.path.join(self.jqsdk.getPricePath('option', 'daily'), fn)
+
+            fnGreece = 'option_greece_{}.csv'.format(dateToStr(tradeDay))
+            fpGreece = os.path.join(self.jqsdk.getPricePath('option', 'greece'), fnGreece)
+
+            groupDf = func(fp, method=method, *arg, **kwargs)
+            if groupDf is None:
+                continue
+
+            greeceDf = pd.read_csv(fpGreece)
+            callCode = groupDf.iloc[0]['code']
+            putCode = groupDf.iloc[1]['code']
+            callGreece = greeceDf[greeceDf.code == callCode].iloc[0]
+            putGreece = greeceDf[greeceDf.code == putCode].iloc[0]
+
+            month = groupDf.month.values[0]
+            callLabel = str(groupDf.iloc[0]['strikePrice']) + groupDf.iloc[0]['contract_type'][0]
+            putLabel = str(groupDf.iloc[1]['strikePrice']) + groupDf.iloc[1]['contract_type'][0]
+            groupLabel = '-'.join([callLabel, putLabel])
+
+            d = dict()
+            d['tradeDay'] = dateToStr(tradeDay)
+            d['month'] = month
+            d['groupLabel'] = groupLabel
+            d['underlyingClose'] = self.underlyingClose
+            d['callDelta'] = callGreece['delta']
+            d['callGamma'] = callGreece['gamma']
+            d['callVega'] = callGreece['vega']
+            d['callTheta'] = callGreece['theta']
+            d['putDelta'] = putGreece['delta']
+            d['putGamma'] = putGreece['gamma']
+            d['putVega'] = putGreece['vega']
+            d['putTheta'] = putGreece['theta']
+            infoList.append(d)
+
+        outputCol = ['tradeDay', 'groupLabel', 'underlyingClose', 'month']
+        outputGreece = [j + i.capitalize() for i in ['delta', 'gamma', 'vega', 'theta'] for j in ['call', 'put']]
+        outputCol.extend(outputGreece)
+
+        df = pd.DataFrame(infoList)
+        df = df[outputCol]
+        save_fp = os.path.join(self.jqsdk.getResearchPath(OPTION, 'atm'), save_fn)
+        saveCsv(df, save_fp)
+        return df
+
+    def getNeutralNextTradeDayBar(self, start, end, group='atm', method='match', isIncludePre=False, *arg, **kwargs):
+        """
+        获取delta中性组合（平值或宽跨式组合）次交易日的连续分钟线数据汇总。
+        :param start: str
+        :param end: str
+        :param group: str. 'atm' or 'straddle'
+        :param method: str. 'simple' or 'match'
+        :param isIncluePre: Bool. 是否包含昨日最后5分钟的交易数据（包含了次日高低开的情况）
+        :return:
+        """
+        preFlag = 'includePre' if isIncludePre else 'excludePre'
+        if group == 'atm':
+            func = self.getAtmContract
+            save_fn = 'atm_continuous_bar_{}_{}.csv'.format(method, preFlag)
+        elif group == 'straddle':
+            func = self.getStraddleContract
+            if 'level' in kwargs:
+                level = kwargs['level']
+            else:
+                level = 1
+            save_fn = 'straddle_{}_continuous_bar_{}_{}.csv'.format(level, method, preFlag)
         else:
             self.error(u'错误的组合类型')
             return
@@ -2085,9 +2182,14 @@ class NeutralContractAnalyzer(LoggerWrapper):
         allList = []
         for tradeDay in tradeDays:
             self.info(u'获取delta中性组合分钟数据：{}'.format(dateToStr(tradeDay)))
-            startDt = datetime.combine(tradeDay, time(16, 0, 0))
-            nextTradeDay = self.jqsdk.getNextTradeDay(startDt)
-            endDt = datetime.combine(nextTradeDay, time(16, 0, 0))
+            if isIncludePre:
+                startDt = datetime.combine(tradeDay, time(14, 55, 0))
+                nextTradeDay = self.jqsdk.getNextTradeDay(startDt)
+                endDt = datetime.combine(nextTradeDay, time(14, 55, 0))
+            else:
+                startDt = datetime.combine(tradeDay, time(16, 0, 0))
+                nextTradeDay = self.jqsdk.getNextTradeDay(startDt)
+                endDt = datetime.combine(nextTradeDay, time(16, 0, 0))
             if endDt >= datetime.now():
                 self.info(u'该交易日尚未结束，数据尚未更新！')
                 break
@@ -2119,22 +2221,24 @@ class NeutralContractAnalyzer(LoggerWrapper):
         saveCsv(df, save_fp)
         return df
 
-    def updateNeutralNextTradeDayBar(self, end=None, group='atm', method='match', *args, **kwargs):
+    def updateNeutralNextTradeDayBar(self, end=None, group='atm', method='match', isIncludePre=False, *args, **kwargs):
         """
         更新delta中性组合（平值或宽跨式组合）次交易日的连续分钟线数据。
+        :param isIncludePre: Bool
         :param end: str
         :param group: str. 'atm' or 'straddle'
         :param method: str. 'match' or 'simple'
         :return:
         """
+        preFlag = 'includePre' if isIncludePre else 'excludePre'
         if group == 'atm':
-            fn = 'atm_continuous_bar_{}.csv'.format(method)
+            fn = 'atm_continuous_bar_{}_{}.csv'.format(method, preFlag)
         elif group == 'straddle':
             if 'level' in kwargs:
                 level = kwargs['level']
             else:
                 level = 1
-            fn = 'straddle_{}_continuous_bar_{}.csv'.format(level, method)
+            fn = 'straddle_{}_continuous_bar_{}_{}.csv'.format(level, method, preFlag)
         else:
             self.error(u'错误的组合类型')
             return
@@ -2146,53 +2250,77 @@ class NeutralContractAnalyzer(LoggerWrapper):
 
         fp = os.path.join(self.jqsdk.getResearchPath(OPTION, 'atm'), fn)
         if not os.path.exists(fp):
-            self.getNeutralNextTradeDayBar('2017-01-01', end, group=group, method=method, *args, **kwargs)
+            self.getNeutralNextTradeDayBar('2017-01-01', end, group=group, method=method, isIncludePre=isIncludePre,
+                                           *args, **kwargs)
         else:
             df = pd.read_csv(fp, index_col=0, parse_dates=True)
             lastDay = df.index.tolist()[-1].strftime('%Y-%m-%d')
             if strToDate(lastDay) >= strToDate(end):
                 self.info(u'中性组合的分钟线数据是最新的！')
             else:
-                df_new = self.getNeutralNextTradeDayBar(lastDay, end, group=group, method=method, *args, **kwargs)
+                df_new = self.getNeutralNextTradeDayBar(lastDay, end, group=group, method=method,
+                                                        isIncludePre=isIncludePre, *args, **kwargs)
                 df = df.append(df_new)
                 saveCsv(df, fp)
 
-    def loadNeutralContinuousBar(self, group='atm', method='match', level=1):
+    def loadNeutralContinuousBar(self, group='atm', method='match', isIncludePre=False, level=1):
         """
         获取中性组合的分钟bar
+        :param isIncludePre: Bool
         :param group: str. 'atm' or 'straddle'
         :param method: str. 'simple' or 'match'
         :param level: int
         :return:
         """
+        preFlag = 'includePre' if isIncludePre else 'excludePre'
         if group == 'atm':
-            fn = 'atm_continuous_bar_{}.csv'.format(method)
+            fn = 'atm_continuous_bar_{}_{}.csv'.format(method, preFlag)
         elif group == 'straddle':
-            fn = 'straddle_{}_continuous_bar_{}.csv'.format(level, method)
+            fn = 'straddle_{}_continuous_bar_{}_{}.csv'.format(level, method, preFlag)
         else:
             return
         fp = os.path.join(self.jqsdk.getResearchPath(OPTION, 'atm'), fn)
         df = pd.read_csv(fp, index_col=0, parse_dates=True)
         return df
 
-    def getOHLCdaily(self, *args, **kwargs):
+    @staticmethod
+    def barToDaily(df):
+        s = pd.Series()
+        for i in ['month', 'groupLabel', 'underlyingClose']:
+            s[i] = df.iloc[0][i]
+        s['open'] = df.iloc[0]['open']
+        s['close'] = df.iloc[-1]['close']
+        s['high'] = df.high.values.max()
+        s['low'] = df.low.values.min()
+        #
+        df2 = pd.DataFrame(s)
+        df2 = df2.T
+        return df2
+
+    def getOHLCdaily(self, isIncludePre=False, *args, **kwargs):
         """
         分钟线合成日线
+        :param isIncludePre:
         :param data: pd.DataFrame
         :return:
         """
         basicInfo = ['open', 'high', 'low', 'close']
-        addInfo = ['tradeDay', 'month', 'groupLabel', 'underlyingClose']
-        addInfoDict = {k: 'first' for k in addInfo}
-        ohlcDict = {'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last'}
-        ohlcDict.update(addInfoDict)
+        data = self.loadNeutralContinuousBar(isIncludePre=isIncludePre, *args, **kwargs)
+        if isIncludePre:
+            data = data.groupby('tradeDay').apply(self.barToDaily)
+            return data
+        else:
+            addInfo = ['tradeDay', 'month', 'groupLabel', 'underlyingClose']
+            addInfoDict = {k: 'first' for k in addInfo}
+            ohlcDict = {'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last'}
+            ohlcDict.update(addInfoDict)
 
-        basicInfo.extend(addInfo)
-        data = self.loadNeutralContinuousBar(*args, **kwargs)
-        # print(data)
-        df = data.resample('D').apply(ohlcDict).dropna(how='all')
-        df = df[basicInfo]
-        return df
+            basicInfo.extend(addInfo)
+            data = self.loadNeutralContinuousBar(isIncludePre=isIncludePre, *args, **kwargs)
+            # print(data)
+            df = data.resample('D').apply(ohlcDict).dropna(how='all')
+            df = df[basicInfo]
+            return df
 
     def removeOHLCgap(self, df=None, *args, **kwargs):
         """

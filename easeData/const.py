@@ -3,6 +3,7 @@
 # 基础数据
 BASIC = 'basic'
 RESEARCH = 'research'
+GREECE = 'greece'
 
 # 数据周期
 DAILY = 'daily'

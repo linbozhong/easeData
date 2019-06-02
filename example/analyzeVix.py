@@ -11,7 +11,7 @@ import tushare as ts
 
 from copy import copy
 from datetime import datetime, time
-from easeData.functions import getDataDir, getTestPath, dateToStr
+from easeData.functions import getDataDir, getTestPath, dateToStr, strToDate
 from easeData.const import *
 from easeData.analyze import get_qvix_data
 from easeData.analyze import KlinePlotter
@@ -24,11 +24,20 @@ def get_50etf_data():
     return df
 
 
-def load_qvix_data():
+def load_qvix_data(start=None, end=None):
+    start = datetime(2016, 6, 13) if start is None else strToDate(start)
+    # end = datetime.now() if end is None else strToDate(end)
+
     filename = 'vixBar.csv'
     fp = os.path.join(getDataDir(), RESEARCH, OPTION, 'qvix', filename)
     df = pd.read_csv(fp, index_col=0, parse_dates=True)
-    df = df[datetime(2016, 6, 13):]
+    df['pre_close'] = df['close'].shift(1)
+    df.dropna(inplace=True)
+    if end is None:
+        df = df[start:]
+    else:
+        end = strToDate(end)
+        df = df[start: end]
     df = copy(df)
     return df
 
@@ -43,6 +52,10 @@ def analyze_ohlc_relationship(data, a, b, direction):
     :return:
     """
     df = data
+    # print(df.index)
+    start_date = pd.to_datetime(df.index.values[0])
+    end_date = pd.to_datetime(df.index.values[-1])
+    print(start_date)
     all_trade_days = len(df)
 
     abs_change_name = '{}_{}_abs'.format(a, b)
@@ -76,7 +89,7 @@ def analyze_ohlc_relationship(data, a, b, direction):
     df2.to_csv(fp2)
 
     print('-' * 30)
-    print(u'自2016-6-13以来，期权论坛波值{}{}{}的交易统计：'.format(b, zh_cn, a))
+    print(u'自{}_{}，期权论坛波值{}{}{}的交易统计：'.format(dateToStr(start_date), dateToStr(end_date), b, zh_cn, a))
     print('-' * 30)
     print(u'总交易日：%s' % all_trade_days)
     print(u'%s%s%s的交易日：%s， 占比：%.3f %%' % (b, zh_cn, a, select_trade_days, select_ratio))
@@ -110,7 +123,7 @@ def analyze_ohlc_relationship(data, a, b, direction):
     ax2.xaxis.set_major_locator(ticker.MultipleLocator(5))
     ax2.yaxis.set_major_locator(ticker.MultipleLocator(0.1))
 
-    filename = '{}_{}_relationship.png'.format(a, b)
+    filename = '{}_to_{}_{}_{}_relationship.png'.format(dateToStr(start_date), dateToStr(end_date), a, b)
     fig.savefig(getTestPath(filename))
 
 
@@ -354,7 +367,7 @@ def plot_atm_ohlc_daily():
     df = get_neutral_continuous_bar()
     df = get_ohlc_daily(df)
     plotter = KlinePlotter(df)
-    plotter.plotAll('ATM Option', 'atm_ohlc_daily.html', item=['ma'])
+    plotter.plotAll('ATM Option', 'dailytask', 'atm_ohlc_daily.html', item=['ma'])
     print('Plot ATM daily ohlc completely.')
 
 
@@ -363,7 +376,7 @@ def plot_straddle_ohlc_daily(level=1):
     df = get_neutral_continuous_bar(group='straddle', level=level)
     df = get_ohlc_daily(df)
     plotter = KlinePlotter(df)
-    plotter.plotAll('Straddle Option Level:{}'.format(level), 'straddle_{}_ohlc_daily.html'.format(level), item=['ma'])
+    plotter.plotAll('Straddle Option Level:{}'.format(level), 'dailytask', 'straddle_{}_ohlc_daily.html'.format(level), item=['ma'])
     print('Plot Straddle-{} daily ohlc completely.'.format(level))
 
 
@@ -371,7 +384,7 @@ def plot_test_date_kline(filename):
     fp = getTestPath(filename)
     df = pd.read_csv(fp, index_col=0)
     plotter = KlinePlotter(df)
-    plotter.plotAll('atm-ohlc-no-gap-test', 'atm-ohlc-no-gap-test.html', item=['ma'])
+    plotter.plotAll('atm-ohlc-no-gap-test', 'dailytask', 'atm-ohlc-no-gap-test.html', item=['ma'])
 
 
 def analyze_atm_range(start_time, end_time):
@@ -487,11 +500,16 @@ if __name__ == '__main__':
     # plot_straddle_ohlc_daily(level=2)
     # plot_straddle_ohlc_daily(level=3)
 
+    vix_data = load_qvix_data('2018-11-29')
     # vix_data = load_qvix_data()
-    # analyze_ohlc_relationship(vix_data, 'open', 'close', 'down')
+    analyze_ohlc_relationship(vix_data, 'open', 'close', 'down')
     # analyze_ohlc_relationship(vix_data, 'open', 'low', 'down')
-    # analyze_ohlc_relationship(vix_data, 'open', 'high', 'up')
+    analyze_ohlc_relationship(vix_data, 'open', 'high', 'up')
     # analyze_ohlc_relationship(vix_data, 'low', 'close', 'up')
+    analyze_ohlc_relationship(vix_data, 'pre_close', 'high', 'up')
+    analyze_ohlc_relationship(vix_data, 'pre_close', 'open', 'up')
+    analyze_ohlc_relationship(vix_data, 'pre_close', 'close', 'up')
+    # analyze_ohlc_relationship(vix_data, 'low', 'high', 'up')
 
     # etf_data = get_50etf_data()
     # analyze_ohlc_relationship(etf_data, 'open', 'close', 'up')
@@ -503,4 +521,4 @@ if __name__ == '__main__':
     # df = get_ohlc_daily(df)
     # print(df)
 
-    plot_test_date_kline('atm_ohlc_no_gap.csv')
+    # plot_test_date_kline('atm_ohlc_no_gap.csv')

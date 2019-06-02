@@ -157,22 +157,31 @@ class TestNeutralAnalyzer(unittest.TestCase):
         # df = self.obj.getStraddleContract(self.fp, method='simple', level=level)
         # df.to_csv(getTestPath('straddle{}_contract_simple.csv'.format(level)))
 
+    def testGetNeutralGroupInfo(self):
+        self.obj.getNeutralGroupInfo('2017-01-01', '2019-05-28')
+
     def testGetNeutralNextTradeDayBar(self):
         # self.obj.getNeutralNextTradeDayBar('2019-05-20', '2019-05-24')
         self.obj.getNeutralNextTradeDayBar('2019-05-20', '2019-05-24', group='straddle', level=2)
 
     def testUpdateNeutralNextTradeDayBar(self):
-        end = '2019-05-28'
-        method = 'simple'
-        # self.obj.updateNeutralNextTradeDayBar(end=end, group='atm', method=method)
-        self.obj.updateNeutralNextTradeDayBar(end=end, group='straddle', method=method, level=1)
-        self.obj.updateNeutralNextTradeDayBar(end=end, group='straddle', method=method, level=2)
-        self.obj.updateNeutralNextTradeDayBar(end=end, group='straddle', method=method, level=3)
+        # end = '2018-12-28'
+        end = None
+        method = 'match'
+        isIncludePre = True
+        self.obj.updateNeutralNextTradeDayBar(end=end, group='atm', method=method, isIncludePre=isIncludePre)
+        # self.obj.updateNeutralNextTradeDayBar(end=end, group='straddle', method=method, level=1)
+        # self.obj.updateNeutralNextTradeDayBar(end=end, group='straddle', method=method, level=2)
+        # self.obj.updateNeutralNextTradeDayBar(end=end, group='straddle', method=method, level=3)
 
     def testGetOHLC(self):
+        # method = 'match'
+        # df = self.obj.getOHLCdaily(method=method)
+        # df.to_csv(getTestPath('atm_ohlc_{}.csv'.format(method)))
+
         method = 'match'
-        df = self.obj.getOHLCdaily(method=method)
-        df.to_csv(getTestPath('atm_ohlc_{}.csv'.format(method)))
+        df = self.obj.getOHLCdaily(method=method, isIncludePre=True)
+        df.to_csv(getTestPath('atm_ohlc_{}_includePre.csv'.format(method)))
 
         # df = self.obj.getOHLCdaily(group='straddle')
         # df.to_csv(getTestPath('straddle_1_ohlc.csv'))
@@ -197,11 +206,10 @@ class TestNeutralAnalyzer(unittest.TestCase):
         # self.obj.plotStraddleOHLC(level=3)
 
         method = 'match'
-        # self.obj.plotAtmOHLC(method=method, isGap=False)
-        self.obj.plotStraddleOHLC(method=method, isGap=False)
-        self.obj.plotStraddleOHLC(method=method, isGap=False, level=2)
-        self.obj.plotStraddleOHLC(method=method, isGap=False, level=3)
-
+        self.obj.plotAtmOHLC(method=method, isGap=False)
+        # self.obj.plotStraddleOHLC(method=method, isGap=False)
+        # self.obj.plotStraddleOHLC(method=method, isGap=False, level=2)
+        # self.obj.plotStraddleOHLC(method=method, isGap=False, level=3)
 
 
 class TestSellBuyRatioPlotter(unittest.TestCase):

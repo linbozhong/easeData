@@ -7,6 +7,7 @@ def updateData():
     collector = JQDataCollector()
     collector.downloadOptionData('basic')
     collector.downloadAllOptionDaily(start)
+    collector.downloadAllOptionGreece(start)
 
 
 def plotPosition():

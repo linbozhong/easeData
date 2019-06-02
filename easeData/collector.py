@@ -573,6 +573,30 @@ class JQDataCollector(DataCollector):
         else:
             self.info(u'{}:{}'.format(FILE_IS_EXISTED, filename))
 
+    def downloadOptionGreeceByDate(self, tradeDate):
+        """
+        按交易日下载期权风险指标数据。
+        :param tradeDate: datetime
+        :return:
+        """
+        filename = u'{}_{}_{}.csv'.format(OPTION, GREECE, dateToStr(tradeDate))
+        path = os.path.join(self.getPricePath(OPTION, GREECE), filename)
+        if not os.path.exists(path):
+            try:
+                q = query(opt.OPT_RISK_INDICATOR).filter(opt.OPT_RISK_INDICATOR.date == tradeDate)
+                df = self.run_query(q)
+                if not df.empty:
+                    df.to_csv(path, encoding='utf-8-sig', index=False)
+                    self.info(u'{}:{}'.format(FILE_DOWNLOAD_SUCCEED, filename))
+                else:
+                    self.info(u'{}:{}'.format(DATA_IS_NONE, filename))
+            except Exception as e:
+                msg = u"{}:{}".format(ERROR_UNKNOWN, e.message.decode('gb2312'))
+                self.error(msg)
+                traceback.print_exc()
+        else:
+            self.info(u'{}:{}'.format(FILE_IS_EXISTED, filename))
+
     def downloadAllOptionDaily(self, start=None):
         """
         下载从指定日开始到今天的期权日线数据。
@@ -584,6 +608,18 @@ class JQDataCollector(DataCollector):
         tradeDays = self.get_trade_days(start_date=start)
         for tradeDate in tradeDays:
             self.downloadOptionDailyByDate(tradeDate)
+
+    def downloadAllOptionGreece(self, start=None):
+        """
+        下载从指定日开始到今天的期权风险指标数据。
+        :param start: datetime
+        :return:
+        """
+        if start is None:
+            start = datetime(2015, 2, 9)
+        tradeDays = self.get_trade_days(start_date=start)
+        for tradeDate in tradeDays:
+            self.downloadOptionGreeceByDate(tradeDate)
 
     def updateCsvContinuousBar(self, symbol):
         """
