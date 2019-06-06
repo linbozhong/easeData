@@ -21,6 +21,9 @@ sns.set()
 
 def get_50etf_data():
     df = ts.get_k_data('510050', start='2005-02-23')
+    df['pre_close'] = df['close'].shift(1)
+    df.dropna(inplace=True)
+    df.set_index('date', inplace=True)
     return df
 
 
@@ -376,7 +379,8 @@ def plot_straddle_ohlc_daily(level=1):
     df = get_neutral_continuous_bar(group='straddle', level=level)
     df = get_ohlc_daily(df)
     plotter = KlinePlotter(df)
-    plotter.plotAll('Straddle Option Level:{}'.format(level), 'dailytask', 'straddle_{}_ohlc_daily.html'.format(level), item=['ma'])
+    plotter.plotAll('Straddle Option Level:{}'.format(level), 'dailytask', 'straddle_{}_ohlc_daily.html'.format(level),
+                    item=['ma'])
     print('Plot Straddle-{} daily ohlc completely.'.format(level))
 
 
@@ -500,16 +504,19 @@ if __name__ == '__main__':
     # plot_straddle_ohlc_daily(level=2)
     # plot_straddle_ohlc_daily(level=3)
 
-    vix_data = load_qvix_data('2018-11-29')
-    # vix_data = load_qvix_data()
-    analyze_ohlc_relationship(vix_data, 'open', 'close', 'down')
-    # analyze_ohlc_relationship(vix_data, 'open', 'low', 'down')
-    analyze_ohlc_relationship(vix_data, 'open', 'high', 'up')
-    # analyze_ohlc_relationship(vix_data, 'low', 'close', 'up')
-    analyze_ohlc_relationship(vix_data, 'pre_close', 'high', 'up')
-    analyze_ohlc_relationship(vix_data, 'pre_close', 'open', 'up')
-    analyze_ohlc_relationship(vix_data, 'pre_close', 'close', 'up')
+    # vix_data = load_qvix_data('2018-11-29')
+    # # vix_data = load_qvix_data()
+    # analyze_ohlc_relationship(vix_data, 'open', 'close', 'down')
+    # # analyze_ohlc_relationship(vix_data, 'open', 'low', 'down')
+    # analyze_ohlc_relationship(vix_data, 'open', 'high', 'up')
+    # # analyze_ohlc_relationship(vix_data, 'low', 'close', 'up')
+    # analyze_ohlc_relationship(vix_data, 'pre_close', 'high', 'up')
+    # analyze_ohlc_relationship(vix_data, 'pre_close', 'open', 'up')
+    # analyze_ohlc_relationship(vix_data, 'pre_close', 'close', 'up')
     # analyze_ohlc_relationship(vix_data, 'low', 'high', 'up')
+
+    etf_data = get_50etf_data()
+    analyze_ohlc_relationship(etf_data, 'pre_close', 'open', 'up')
 
     # etf_data = get_50etf_data()
     # analyze_ohlc_relationship(etf_data, 'open', 'close', 'up')

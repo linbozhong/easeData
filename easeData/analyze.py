@@ -7,12 +7,14 @@ import pandas as pd
 import os
 import pymongo
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 import seaborn as sns
 from copy import copy
 from collections import OrderedDict
 
 from datetime import datetime, timedelta, time
 from dateutil.relativedelta import relativedelta, FR
+from scipy import stats
 
 import tushare as ts
 from jqdatasdk import opt, query
@@ -27,6 +29,7 @@ from functions import (strToDate, dateToStr, getTestPath, getDataDir, roundFloat
 from const import *
 from text import *
 
+sns.set()
 QVIX_URL = 'http://1.optbbs.com/d/csv/d/vixk.csv'
 
 
@@ -1778,6 +1781,127 @@ class SellBuyRatioPlotter(LoggerWrapper):
         page.render(os.path.join(outputDir, '50etf_money_flow.html'))
 
 
+class VixAnalyzer(LoggerWrapper):
+    def __init__(self, collector, symbol):
+        super(VixAnalyzer, self).__init__()
+        self.symbol = symbol
+        self.collector = collector
+        self.underlyingAnalyzer = OptionUnderlyingAnalyzer(self.collector, self.symbol)
+
+        self.dataFilePath = self.getFilePath()
+        self.vix = None
+        self.plotter = Plotter(self.collector)
+
+    @staticmethod
+    def getPercentile(seq):
+        latest = seq[-1]
+        return stats.percentileofscore(seq, latest)
+
+    def getFilePath(self):
+        fn = 'vixBar.csv'
+        fp = os.path.join(self.collector.getResearchPath(OPTION, 'qvix'), fn)
+        return fp
+
+    def getVix(self):
+        """
+        获取隐含波动率数据
+        :return:
+        """
+        if self.vix is None:
+            self.vix = pd.read_csv(self.dataFilePath, index_col=0, parse_dates=True)
+        return self.vix
+
+    def getVixPercentile(self, n=0):
+        """
+        计算vix所处的百分位
+        :param n: int. 计算近n个交易日的数据，取0时表示使用所有历史数据。
+        :return: pd.Series
+        """
+        df = self.getVix()
+        if n == 0:
+            name = 'percentile'
+            seq = df['close'].values
+            df[name] = df['close'].map(lambda number: stats.percentileofscore(seq, number))
+        else:
+            name = 'percentile_{}'.format(n)
+            df[name] = df['close'].rolling(n).apply(self.getPercentile, raw=True)
+        return df[name]
+
+    def getHisVolatility(self, n=20):
+        """
+        获取标的的历史波动率
+        :param n: 最近n个交易日的历史波动率
+        :return:
+        """
+        df = self.getVix()
+        name = 'HV_{}'.format(n)
+        df[name] = self.underlyingAnalyzer.getHistVolatility(n)
+        return df[name]
+
+    def analyzeVixAndUnderlying(self):
+        underlying = self.underlyingAnalyzer.getPrice()
+        underlying['pre_close'] = underlying['close'].shift(1)
+        underlying['open_jump'] = (underlying['open'] - underlying['pre_close']) / underlying['open']
+
+        df = self.getVix()
+        df['underlying_open_jump'] = underlying['open_jump']
+        df['pre_close'] = df['close'].shift(1)
+        df['vix_open_jump_abs'] = df['open'] - df['pre_close']
+        df['vix_open_jump'] = (df['open'] - df['pre_close']) / df['open']
+        df['vix_return_abs'] = df['close'] - df['open']
+        df['vix_return_pct'] = df['vix_return_abs'] / df['open']
+        df['vix_drawback_abs'] = df['high'] - df['pre_close']
+        df['vix_drawback_pct'] = df['vix_drawback_abs'] / df['pre_close']
+
+        saveCsv(df, getTestPath('vix_underlying_relationship.csv'))
+
+    def plotPercentile(self, nList):
+        """
+        输出vix百分位的折线图
+        :return:
+        """
+        title = u'波动率百分位图'
+        colNameList = []
+        for n in nList:
+            if n == 0:
+                colNameList.append('percentile')
+            else:
+                colNameList.append('percentile_{}'.format(n))
+            self.getVixPercentile(n)
+
+        self.plotter.setCsvData(self.vix)
+        line = self.plotter.plotLine(title, colNameList)
+        self.plotter.addRenderItem(line)
+
+    def plotVolatilityDiff(self, nList):
+        """
+        绘制隐含波动率、历史波动率
+        :param n:
+        :return:
+        """
+        title = u'历史波动率与隐含波动率对比'
+        df = self.getVix()
+        colNameList = []
+        colNameList.append('IV')
+        for n in nList:
+            colNameList.append('HV_{}'.format(n))
+            self.getHisVolatility(n)
+        df['IV'] = df['close']
+
+        self.plotter.setCsvData(self.vix)
+        line = self.plotter.plotLine(title, colNameList)
+        self.plotter.addRenderItem(line)
+
+    def render(self, path, filename):
+        """
+        输出html
+        :param path:
+        :param filename:
+        :return:
+        """
+        self.plotter.renderHtml(path, filename)
+
+
 class OptionUnderlyingAnalyzer(LoggerWrapper):
     """
     期权标的分析
@@ -1785,7 +1909,95 @@ class OptionUnderlyingAnalyzer(LoggerWrapper):
 
     def __init__(self, collector, symbol):
         super(OptionUnderlyingAnalyzer, self).__init__()
-        pass
+        self.collector = collector
+        self.symbol = symbol
+        self.today = self.collector.today
+        self.dataFilePath = self.getFilePath()
+
+        self.price = None
+        self.vix = None
+
+    def getFilePath(self):
+        fn = '{}_daily_prefq.csv'.format(self.symbol.split('.')[0])
+        fp = os.path.join(self.collector.getResearchPath(OPTION, 'underlying'), fn)
+        return fp
+
+    def getOutputPath(self, fn):
+        dirName = os.path.dirname(self.dataFilePath)
+        return os.path.join(dirName, fn)
+
+    def updatePrice(self, start):
+        end = self.today
+        fp = self.dataFilePath
+
+        if not os.path.exists(fp):
+            df = self.collector.get_price(self.symbol, start_date=start, end_date=end, fq='pre')
+            df = df[df.volume != 0]
+            saveCsv(df, fp)
+        else:
+            df = pd.read_csv(fp, index_col=0, parse_dates=True)
+            lastDay = df.index.tolist()[-1] + timedelta(days=1)
+            if lastDay <= end:
+                df_new = self.collector.get_price(self.symbol, lastDay, end, fq='pre')
+                df_new = df_new[df_new.volume != 0]
+                df = df.append(df_new)
+                saveCsv(df, fp)
+
+    def getPrice(self):
+        if self.price is None:
+            self.price = pd.read_csv(self.dataFilePath, index_col=0, parse_dates=True)
+        return self.price
+
+    def getVix(self):
+        if self.vix is None:
+            vixAnalyzer = VixAnalyzer(self.collector, self.symbol)
+            self.vix = vixAnalyzer.getVix()
+        return self.vix
+
+    def getImpliedVolatility(self):
+        try:
+            return self.price['IV']
+        except KeyError:
+            df = self.getPrice()
+            df['IV'] = self.getVix()['close']
+            return df['IV']
+
+    def getHistVolatility(self, n, isLogReturn=True):
+        name = 'HV_{}'.format(n)
+        try:
+            df = self.getPrice()
+            return df[name]
+        except KeyError:
+            df = self.getPrice()
+            df['returns'] = df.close.pct_change()
+            if isLogReturn:
+                df['returns'] = np.log(df['returns'] + 1)
+            df[name] = df['returns'].rolling(n).std() * np.sqrt(252) * 100
+            return df[name]
+
+    def plotVolatilityBox(self):
+        statsLst = []
+        volLst = []
+        df = self.getPrice()
+        self.getImpliedVolatility()
+
+        statsLst.append(df['IV'].describe())
+        volLst.append('IV')
+        for n in [10, 20, 30, 60, 120]:
+            name = 'HV_{}'.format(n)
+            self.getHistVolatility(n)
+            statsLst.append(df[name].describe())
+            volLst.append(name)
+
+        statsDf = pd.concat(statsLst, axis=1)
+        saveCsv(statsDf, self.getOutputPath('boxplotData.csv'))
+
+        dataDf = df[volLst]
+        fig = plt.figure(figsize=(16, 12))
+        ax = fig.add_subplot(1, 1, 1)
+        sns.boxplot(data=dataDf, ax=ax)
+        ax.yaxis.set_major_locator(ticker.MultipleLocator(5))
+        fig.savefig(self.getOutputPath('volBoxPlot.png'))
 
 
 class NeutralContractAnalyzer(LoggerWrapper):
@@ -2119,6 +2331,8 @@ class NeutralContractAnalyzer(LoggerWrapper):
             greeceDf = pd.read_csv(fpGreece)
             callCode = groupDf.iloc[0]['code']
             putCode = groupDf.iloc[1]['code']
+            print(callCode, putCode)
+            print(fnGreece)
             callGreece = greeceDf[greeceDf.code == callCode].iloc[0]
             putGreece = greeceDf[greeceDf.code == putCode].iloc[0]
 
@@ -2280,13 +2494,14 @@ class NeutralContractAnalyzer(LoggerWrapper):
         else:
             return
         fp = os.path.join(self.jqsdk.getResearchPath(OPTION, 'atm'), fn)
+        print(fp)
         df = pd.read_csv(fp, index_col=0, parse_dates=True)
         return df
 
     @staticmethod
     def barToDaily(df):
         s = pd.Series()
-        for i in ['month', 'groupLabel', 'underlyingClose']:
+        for i in ['tradeDay', 'month', 'groupLabel', 'underlyingClose']:
             s[i] = df.iloc[0][i]
         s['open'] = df.iloc[0]['open']
         s['close'] = df.iloc[-1]['close']
@@ -2307,8 +2522,10 @@ class NeutralContractAnalyzer(LoggerWrapper):
         basicInfo = ['open', 'high', 'low', 'close']
         data = self.loadNeutralContinuousBar(isIncludePre=isIncludePre, *args, **kwargs)
         if isIncludePre:
-            data = data.groupby('tradeDay').apply(self.barToDaily)
-            return data
+            df = data.groupby('tradeDay').apply(self.barToDaily)
+            df.set_index('tradeDay', inplace=True)
+            df.index = df.index.map(strToDate)
+            return df
         else:
             addInfo = ['tradeDay', 'month', 'groupLabel', 'underlyingClose']
             addInfoDict = {k: 'first' for k in addInfo}
@@ -2316,7 +2533,6 @@ class NeutralContractAnalyzer(LoggerWrapper):
             ohlcDict.update(addInfoDict)
 
             basicInfo.extend(addInfo)
-            data = self.loadNeutralContinuousBar(isIncludePre=isIncludePre, *args, **kwargs)
             # print(data)
             df = data.resample('D').apply(ohlcDict).dropna(how='all')
             df = df[basicInfo]
@@ -2361,41 +2577,56 @@ class NeutralContractAnalyzer(LoggerWrapper):
         df = df.groupby(by='month').apply(self.removeOHLCgap)
         return df
 
-    def plotAtmOHLC(self, method='match', isGap=True):
+    def plotAtmOHLC(self, method='match', isGap=True, divideByMonth=False, isIncludePre=False):
         """
         输出平值期权组合连续日k线图
+        :param isIncludePre:
+        :param divideByMonth:
         :param isGap:
         :param method:
         :return:
         """
+        preFlag = 'includePre' if isIncludePre else 'excludePre'
+        byMonthFlag = 'byMonth' if divideByMonth else 'noByMonth'
         if isGap:
             name_flag = 'gap'
-            df = self.getOHLCdaily(group='atm', method=method)
+            df = self.getOHLCdaily(group='atm', method=method, isIncludePre=isIncludePre)
         else:
             name_flag = 'nogap'
-            df = self.removeGapByMonth(group='atm', method=method)
+            if divideByMonth:
+                df = self.removeGapByMonth(group='atm', method=method, isIncludePre=isIncludePre)
+            else:
+                df = self.removeOHLCgap(group='atm', method=method, isIncludePre=isIncludePre)
 
-        fn = 'atm_{}_ohlc_daily_{}.html'.format(method, name_flag)
+        fn = 'atm_{}_ohlc_daily_{}_{}_{}.html'.format(method, name_flag, byMonthFlag, preFlag)
 
         plotter = KlinePlotter(df)
         plotter.plotAll('ATM-{}-{} method'.format(method, name_flag), 'atm', fn, item=['ma'])
         self.info(u'平值期权{}-{}日K绘制完成'.format(method, name_flag))
 
-    def plotStraddleOHLC(self, method='match', isGap=True, level=1):
+    def plotStraddleOHLC(self, method='match', isGap=True, divideByMonth=False, isIncludePre=False, level=1):
         """
         输出宽跨式期权组合日k线图
+        :param isIncludePre:
+        :param divideByMonth:
+        :param isGap:
         :param method:
         :param level:
         :return:
         """
+        preFlag = 'includePre' if isIncludePre else 'excludePre'
+        byMonthFlag = 'byMonth' if divideByMonth else 'noByMonth'
         if isGap:
             name_flag = 'gap'
-            df = self.getOHLCdaily(group='straddle', method=method, level=level)
+            df = self.getOHLCdaily(group='straddle', method=method, isIncludePre=isIncludePre, level=level)
         else:
             name_flag = 'nogap'
-            df = self.removeGapByMonth(group='straddle', method=method, level=level)
+            if divideByMonth:
+                df = self.removeGapByMonth(group='straddle', method=method, isIncludePre=isIncludePre)
+            else:
+                df = self.removeOHLCgap(group='straddle', method=method, isIncludePre=isIncludePre)
 
-        fn = 'straddle_{}_{}_ohlc_daily_{}.html'.format(level, method, name_flag)
+        fn = 'straddle_{}_{}_ohlc_daily_{}_{}_{}.html'.format(level, method, name_flag, byMonthFlag, preFlag)
 
         plotter = KlinePlotter(df)
         plotter.plotAll('Straddle-{}-{}-{}'.format(level, method, name_flag), 'atm', fn, item=['ma'])
@@ -2747,6 +2978,58 @@ class QvixPlotter(LoggerWrapper):
         page.render(os.path.join(outputDir, htmlName))
 
 
+class Plotter(LoggerWrapper):
+    """
+    绘图器。
+    """
+
+    def __init__(self, collector, df=None):
+        super(Plotter, self).__init__()
+        self.collector = collector
+        self.width = 1600
+        self.height = 600
+        self.data = df
+
+        self.page = Page()
+        self.genStyle = {
+            'is_datazoom_show': True,
+            'datazoom_type': 'both',
+            'tooltip_trigger': 'axis'
+        }
+
+    def getCsvData(self):
+        return self.data
+
+    def setCsvData(self, df):
+        self.data = df
+
+    def plotLine(self, title, colNameList):
+        """
+        绘制折线
+        :param colNameList: list
+        :return:
+        """
+        lineStyle = self.genStyle.copy()
+        lineStyle['line_width'] = 2
+        overlap = Overlap(width=self.width, height=self.height)
+
+        df = self.getCsvData()
+        dateList = df.index.tolist()
+        for col in colNameList:
+            line = Line(title=title)
+            line.add(col, dateList, df[col].tolist(), **lineStyle)
+            overlap.add(line)
+        return overlap
+
+    def addRenderItem(self, overlap):
+        self.page.add(overlap)
+
+    def renderHtml(self, path, filename):
+        dir_ = self.collector.getResearchPath(OPTION, path)
+        fp = os.path.join(dir_, filename)
+        self.page.render(fp)
+
+
 class KlinePlotter(LoggerWrapper):
     """
     k线行情及指标绘图器。
@@ -2755,7 +3038,7 @@ class KlinePlotter(LoggerWrapper):
     def __init__(self, df):
         super(KlinePlotter, self).__init__()
         self.jqsdk = JQDataCollector()
-        self.width = 1500
+        self.width = 1600
         self.height = 600
         self.data = df
 
@@ -2840,7 +3123,6 @@ class KlinePlotter(LoggerWrapper):
         lineStyle = self.genStyle.copy()
         lineStyle['line_width'] = 2
 
-        # title = u'波动率指数移动平均线'
         overlap = Overlap(width=self.width, height=self.height)
         kline = self.plotKline(title)
         overlap.add(kline)
@@ -2854,7 +3136,6 @@ class KlinePlotter(LoggerWrapper):
             line.add(label, dateList, self.addCloseMa(ma).tolist(), **lineStyle)
             overlap.add(line)
 
-        # overlap.render(getTestPath('qvixkline.html'))
         return overlap
 
     def plotBollChanel(self, title, n=20):

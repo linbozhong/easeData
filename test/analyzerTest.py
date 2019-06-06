@@ -3,15 +3,67 @@
 import unittest
 import os
 from datetime import datetime
-from easeData.functions import getTestPath
+from easeData.functions import getTestPath, dateToStr
 from easeData.analyze import (CorrelationAnalyzer, PositionDiffPlotter, SellBuyRatioPlotter, QvixPlotter,
-                              NeutralContractAnalyzer)
-from easeData.functions import dateToStr
+                              NeutralContractAnalyzer, OptionUnderlyingAnalyzer, VixAnalyzer)
+from easeData.collector import JQDataCollector
 
 corrAnalyzer = CorrelationAnalyzer()
 positionDiffPlotter = PositionDiffPlotter()
 sellBuyRatioPlotter = SellBuyRatioPlotter()
 qvixPlotter = QvixPlotter()
+
+jqsdk = JQDataCollector()
+
+
+class TestVixAnalyzer(unittest.TestCase):
+    def setUp(self):
+        self.obj = VixAnalyzer(jqsdk, '510050.XSHG')
+
+    def testGetVix(self):
+        df = self.obj.getVix()
+        print(df.index)
+        print(df)
+
+    def testGetHistVol(self):
+        self.obj.getHisVolatility(20)
+        df = self.obj.getVix()
+        df.to_csv(getTestPath('vix_hist_vol_test.csv'))
+
+    def testGetPercentile(self):
+        print(self.obj.getVixPercentile())
+        print(self.obj.getVixPercentile())
+        self.obj.vix.to_csv(getTestPath('vix_test.csv'))
+
+    def testPlotPercentile(self):
+        # self.obj.getVixPercentile()
+        self.obj.plotPercentile([0, 120, 250, 500])
+        self.obj.plotVolatilityDiff([20, 30])
+        self.obj.render('qvix', 'qvix_research.html')
+
+    def testAnalyzerVixAndUnderlying(self):
+        self.obj.analyzeVixAndUnderlying()
+
+
+class TestUnderlyingAnalyzer(unittest.TestCase):
+    def setUp(self):
+        self.obj = OptionUnderlyingAnalyzer(jqsdk, '510050.XSHG')
+
+    def testUpdatePrice(self):
+        self.obj.updatePrice(start='2005-02-23')
+
+    def testGetVolatility(self):
+        stats_df = []
+        for n in [10, 20, 30, 60, 90]:
+            self.obj.getHistVolatility(n)
+            name = 'HV_{}'.format(n)
+            stats_df.append(self.obj.price[name])
+            # print(self.obj.price[name].describe())
+
+        self.obj.price.to_csv(getTestPath('510050_hist_volatility.csv'))
+
+    def testPlotVolatiltiy(self):
+        self.obj.plotVolatilityBox()
 
 
 class TestCorrAnalyzer(unittest.TestCase):
@@ -158,19 +210,41 @@ class TestNeutralAnalyzer(unittest.TestCase):
         # df.to_csv(getTestPath('straddle{}_contract_simple.csv'.format(level)))
 
     def testGetNeutralGroupInfo(self):
-        self.obj.getNeutralGroupInfo('2017-01-01', '2019-05-28')
+        # self.obj.getNeutralGroupInfo('2019-05-21', '2019-05-31')
+        self.obj.getNeutralGroupInfo('2017-01-01', '2019-05-28', method='simple')
+        # self.obj.getNeutralGroupInfo('2017-01-01', '2019-05-28', group='straddle', level=1)
+        # self.obj.getNeutralGroupInfo('2017-01-01', '2019-05-28', group='straddle', level=2)
+        # self.obj.getNeutralGroupInfo('2017-01-01', '2019-05-28', group='straddle', level=3)
 
     def testGetNeutralNextTradeDayBar(self):
         # self.obj.getNeutralNextTradeDayBar('2019-05-20', '2019-05-24')
         self.obj.getNeutralNextTradeDayBar('2019-05-20', '2019-05-24', group='straddle', level=2)
 
     def testUpdateNeutralNextTradeDayBar(self):
-        # end = '2018-12-28'
+        # end = '2017-02-28'
         end = None
-        method = 'match'
+        # method = 'match'
+        method = 'simple'
         isIncludePre = True
+
+        self.obj.updateNeutralNextTradeDayBar(end=end, group='atm', method=method, isIncludePre=False)
         self.obj.updateNeutralNextTradeDayBar(end=end, group='atm', method=method, isIncludePre=isIncludePre)
+
+        # self.obj.updateNeutralNextTradeDayBar(end=end, group='atm', method=method, isIncludePre=False)
+        # self.obj.updateNeutralNextTradeDayBar(end=end, group='atm', method=method, isIncludePre=isIncludePre)
+
         # self.obj.updateNeutralNextTradeDayBar(end=end, group='straddle', method=method, level=1)
+        # self.obj.updateNeutralNextTradeDayBar(end=end, group='straddle', method=method, level=2)
+        # self.obj.updateNeutralNextTradeDayBar(end=end, group='straddle', method=method, level=3)
+
+        # self.obj.updateNeutralNextTradeDayBar(end=end, group='straddle', method=method, level=1, isIncludePre=isIncludePre)
+
+        # self.obj.updateNeutralNextTradeDayBar(end=end, group='straddle', method=method, level=2, isIncludePre=False)
+        # self.obj.updateNeutralNextTradeDayBar(end=end, group='straddle', method=method, level=2, isIncludePre=isIncludePre)
+
+        # self.obj.updateNeutralNextTradeDayBar(end=end, group='straddle', method=method, level=3, isIncludePre=False)
+        # self.obj.updateNeutralNextTradeDayBar(end=end, group='straddle', method=method, level=3, isIncludePre=isIncludePre)
+
         # self.obj.updateNeutralNextTradeDayBar(end=end, group='straddle', method=method, level=2)
         # self.obj.updateNeutralNextTradeDayBar(end=end, group='straddle', method=method, level=3)
 
@@ -205,11 +279,27 @@ class TestNeutralAnalyzer(unittest.TestCase):
         # self.obj.plotStraddleOHLC(level=2)
         # self.obj.plotStraddleOHLC(level=3)
 
-        method = 'match'
-        self.obj.plotAtmOHLC(method=method, isGap=False)
-        # self.obj.plotStraddleOHLC(method=method, isGap=False)
-        # self.obj.plotStraddleOHLC(method=method, isGap=False, level=2)
-        # self.obj.plotStraddleOHLC(method=method, isGap=False, level=3)
+        # method = 'match'
+        method = 'simple'
+        self.obj.plotAtmOHLC(method=method, isGap=True, isIncludePre=False)
+        self.obj.plotAtmOHLC(method=method, isGap=True, isIncludePre=True)
+        self.obj.plotAtmOHLC(method=method, isGap=False, isIncludePre=True, divideByMonth=False)
+        self.obj.plotAtmOHLC(method=method, isGap=False, isIncludePre=False, divideByMonth=False)
+
+        # self.obj.plotStraddleOHLC(method=method, isGap=True, isIncludePre=False, divideByMonth=False, level=1)
+        # self.obj.plotStraddleOHLC(method=method, isGap=True, isIncludePre=True, divideByMonth=False, level=1)
+        # self.obj.plotStraddleOHLC(method=method, isGap=False, isIncludePre=False, divideByMonth=False, level=1)
+        # self.obj.plotStraddleOHLC(method=method, isGap=False, isIncludePre=True, divideByMonth=False, level=1)
+
+        # self.obj.plotStraddleOHLC(method=method, isGap=True, isIncludePre=False, divideByMonth=False, level=2)
+        # self.obj.plotStraddleOHLC(method=method, isGap=True, isIncludePre=True, divideByMonth=False, level=2)
+        # self.obj.plotStraddleOHLC(method=method, isGap=False, isIncludePre=False, divideByMonth=False, level=2)
+        # self.obj.plotStraddleOHLC(method=method, isGap=False, isIncludePre=True, divideByMonth=False, level=2)
+
+        # self.obj.plotStraddleOHLC(method=method, isGap=True, isIncludePre=False, divideByMonth=False, level=3)
+        # self.obj.plotStraddleOHLC(method=method, isGap=True, isIncludePre=True, divideByMonth=False, level=3)
+        # self.obj.plotStraddleOHLC(method=method, isGap=False, isIncludePre=False, divideByMonth=False, level=3)
+        # self.obj.plotStraddleOHLC(method=method, isGap=False, isIncludePre=True, divideByMonth=False, level=3)
 
 
 class TestSellBuyRatioPlotter(unittest.TestCase):
