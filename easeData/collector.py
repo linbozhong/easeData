@@ -611,13 +611,14 @@ class JQDataCollector(DataCollector):
 
     def downloadAllOptionGreece(self, start=None):
         """
-        下载从指定日开始到今天的期权风险指标数据。
+        下载从指定日开始到昨交易日的期权风险指标数据。
         :param start: datetime
         :return:
         """
         if start is None:
             start = datetime(2015, 2, 9)
         tradeDays = self.get_trade_days(start_date=start)
+        tradeDays = tradeDays[0: -1]
         for tradeDate in tradeDays:
             self.downloadOptionGreeceByDate(tradeDate)
 

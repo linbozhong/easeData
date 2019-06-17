@@ -1802,6 +1802,41 @@ class VixAnalyzer(LoggerWrapper):
         fp = os.path.join(self.collector.getResearchPath(OPTION, 'qvix'), fn)
         return fp
 
+    def getOutputPath(self, fn):
+        dirName = os.path.dirname(self.dataFilePath)
+        return os.path.join(dirName, fn)
+
+    def updateVixData(self):
+        """
+        获取期权论坛波动率指数日线数据。
+        :return:
+        """
+        try:
+            resp = requests.get(QVIX_URL)
+            csv_reader = csv.DictReader(resp.iter_lines())
+            csv_list = list(csv_reader)
+        except:
+            print('error occur when get qvix.')
+        else:
+            name_dict = {
+                '1': 'datetime',
+                '2': 'open',
+                '3': 'high',
+                '4': 'low',
+                '5': 'close'
+            }
+            df = pd.DataFrame(csv_list)
+            df.rename(columns=name_dict, inplace=True)
+            df['datetime'] = df['datetime'].map(
+                lambda t_stamp: dateToStr(datetime.fromtimestamp(float(t_stamp) / 1000)))
+            for item in ['open', 'high', 'low', 'close']:
+                df[item] = df[item].map(lambda str_num: float(str_num))
+
+            df.set_index('datetime', inplace=True)
+            df.to_csv(self.dataFilePath)
+            print('update completely!')
+            return df
+
     def getVix(self):
         """
         获取隐含波动率数据
@@ -1838,22 +1873,51 @@ class VixAnalyzer(LoggerWrapper):
         df[name] = self.underlyingAnalyzer.getHistVolatility(n)
         return df[name]
 
-    def analyzeVixAndUnderlying(self):
-        underlying = self.underlyingAnalyzer.getPrice()
-        underlying['pre_close'] = underlying['close'].shift(1)
-        underlying['open_jump'] = (underlying['open'] - underlying['pre_close']) / underlying['open']
-
+    def analyzeVixAndUnderlying(self, start=None, end=None):
         df = self.getVix()
-        df['underlying_open_jump'] = underlying['open_jump']
-        df['pre_close'] = df['close'].shift(1)
-        df['vix_open_jump_abs'] = df['open'] - df['pre_close']
-        df['vix_open_jump'] = (df['open'] - df['pre_close']) / df['open']
-        df['vix_return_abs'] = df['close'] - df['open']
-        df['vix_return_pct'] = df['vix_return_abs'] / df['open']
-        df['vix_drawback_abs'] = df['high'] - df['pre_close']
-        df['vix_drawback_pct'] = df['vix_drawback_abs'] / df['pre_close']
+        underlying = self.underlyingAnalyzer.getPrice()
 
-        saveCsv(df, getTestPath('vix_underlying_relationship.csv'))
+        underlying['pre_close'] = underlying['close'].shift(1)
+        df['open_return'] = (underlying['open'] - underlying['pre_close']) / underlying['pre_close']
+        df['close_return'] = (underlying['close'] - underlying['pre_close']) / underlying['pre_close']
+        df['amplitude'] = (underlying['high'] - underlying['low']) / underlying['pre_close']
+
+        df['vix_pre_close'] = df['close'].shift(1)
+        df['vix_open_return_abs'] = df['open'] - df['vix_pre_close']
+        df['vix_open_return_pct'] = df['vix_open_return_abs'] / df['vix_pre_close']
+        df['vix_close_return_abs'] = df['close'] - df['vix_pre_close']
+        df['vix_close_return_pct'] = df['vix_close_return_abs'] / df['vix_pre_close']
+        df['vix_drawback_abs'] = df['high'] - df['vix_pre_close']
+        df['vix_drawback_pct'] = df['vix_drawback_abs'] / df['vix_pre_close']
+
+        start = datetime(2016, 6, 13) if start is None else strToDate(start)
+        if end is None:
+            df = df[start:]
+        else:
+            end = strToDate(end)
+            df = df[start: end]
+        df = copy(df)
+
+        csv_fn = 'vix_underlying_corr_{}_{}.csv'.format(dateToStr(pd.to_datetime(df.index.values[0])),
+                                                        dateToStr(pd.to_datetime(df.index.values[-1])))
+        saveCsv(df, self.getOutputPath(csv_fn))
+
+        fig, axes = plt.subplots(3, 3, figsize=(32, 32))
+        axes = axes.flatten()
+
+        sns.regplot('open_return', 'vix_open_return_pct', data=df, ax=axes[0])
+        sns.regplot('open_return', 'vix_drawback_pct', data=df, ax=axes[1])
+        sns.regplot('open_return', 'vix_close_return_pct', data=df, ax=axes[2])
+        sns.regplot('amplitude', 'vix_drawback_pct', data=df, ax=axes[3])
+        sns.regplot('amplitude', 'vix_close_return_pct', data=df, ax=axes[4])
+        sns.regplot('close_return', 'vix_close_return_pct', data=df, ax=axes[5])
+        sns.regplot('vix_open_return_pct', 'vix_drawback_pct', data=df, ax=axes[6])
+        sns.regplot('vix_open_return_pct', 'vix_close_return_pct', data=df, ax=axes[7])
+
+        plt.subplots_adjust(wspace=0.3, hspace=0.2)
+        fn = 'vix_underlying_corr_{}_{}'.format(dateToStr(pd.to_datetime(df.index.values[0])),
+                                                dateToStr(pd.to_datetime(df.index.values[-1])))
+        fig.savefig(self.getOutputPath(fn))
 
     def plotPercentile(self, nList):
         """
@@ -1954,6 +2018,74 @@ class OptionUnderlyingAnalyzer(LoggerWrapper):
             self.vix = vixAnalyzer.getVix()
         return self.vix
 
+    @staticmethod
+    def getDuration(df, start, end):
+        start = datetime(2005, 2, 23) if start is None else strToDate(start)
+        if end is None:
+            df = df[start:]
+        else:
+            end = strToDate(end)
+            df = df[start: end]
+        df = copy(df)
+        return df
+
+    def preProcessChange(self):
+        df = self.getPrice()
+        df['pre_close'] = df['close'].shift(1)
+        df['open_return'] = (df['open'] - df['pre_close']) / df['pre_close']
+        df['close_return'] = (df['close'] - df['pre_close']) / df['pre_close']
+        df['up_max'] = (df['high'] - df['pre_close']) / df['pre_close']
+        df['down_max'] = (df['low'] - df['pre_close']) / df['pre_close']
+        df['amplitude'] = (df['high'] - df['low']) / df['pre_close']
+        df.dropna(inplace=True)
+        return df
+
+    def analyzeChange(self):
+        d = OrderedDict()
+        d['All'] = 0
+        d['5-year'] = 250 * 5
+        d['3-year'] = 250 * 3
+        d['2-year'] = 250 * 2
+        d['1-year'] = 250
+        d['6-month'] = 125
+
+        df = self.preProcessChange()
+
+        items = ['open_return', 'close_return', 'up_max', 'down_max', 'amplitude']
+
+        for item in items:
+            statsLst = []
+            for k, v in d.items():
+                statsItem = df[item][-v:].describe()
+                statsItem.name = k
+                statsLst.append(statsItem)
+            stats_df = pd.concat(statsLst, axis=1)
+            stats_df = stats_df.T
+            saveCsv(stats_df, self.getOutputPath('stats_{}.csv'.format(item)))
+
+    def plotChange(self, start=None, end=None):
+        df = self.preProcessChange()
+        df = self.getDuration(df, start, end)
+
+        fig, axes = plt.subplots(3, 5, figsize=(80, 48))
+        axes = axes.transpose()
+        items = ['open_return', 'close_return', 'up_max', 'down_max', 'amplitude']
+        for idx, item in enumerate(items):
+            data = df[item].values
+            sns.distplot(data, bins=100, color='g', ax=axes[idx][0]).set_title(item)
+            sns.kdeplot(data, color='r', cumulative=True, ax=axes[idx][1]).set_title(item)
+            sns.boxplot(data, ax=axes[idx][2]).set_title(item)
+
+            for i in range(3):
+                axes[idx][i].xaxis.set_major_locator(ticker.MultipleLocator(0.01))
+                if i == 1:
+                    axes[idx][i].yaxis.set_major_locator(ticker.MultipleLocator(0.02))
+
+        plt.subplots_adjust(wspace=0.3, hspace=0.2)
+        fn = 'vix_underlying_corr_{}_{}'.format(dateToStr(pd.to_datetime(df.index.values[0])),
+                                                dateToStr(pd.to_datetime(df.index.values[-1])))
+        fig.savefig(self.getOutputPath(fn))
+
     def getImpliedVolatility(self):
         try:
             return self.price['IV']
@@ -2005,10 +2137,10 @@ class NeutralContractAnalyzer(LoggerWrapper):
     Delta中性组合分析
     """
 
-    def __init__(self, underlyingSymbol):
+    def __init__(self, collector, underlyingSymbol):
         super(NeutralContractAnalyzer, self).__init__()
 
-        self.jqsdk = JQDataCollector()
+        self.jqsdk = collector
         self.underlyingSymbol = underlyingSymbol
 
         self.start = '2017-01-01'
@@ -2027,6 +2159,22 @@ class NeutralContractAnalyzer(LoggerWrapper):
         self.calls = None
         self.puts = None
         self.underlyingClose = None
+
+        self.commission = 2
+        self.slippage = 2
+        self.interval = 3
+
+    def setCommission(self, commission):
+        self.commission = commission
+
+    def setSlippage(self, slippage):
+        self.slippage = slippage
+
+    def setInterval(self, interval):
+        self.interval = interval
+
+    def getOutputPath(self, fn):
+        return os.path.join(self.jqsdk.getResearchPath(OPTION, 'atm'), fn)
 
     def getContractInfo(self):
         """
@@ -2174,6 +2322,10 @@ class NeutralContractAnalyzer(LoggerWrapper):
         if df['isHasM'].any():
             df = df[df.isHasM]
 
+        dt = strToDate(df['date'].iloc[0])
+        underlyingClose = self.getUnderlyingPrice().close[dt]
+        self.underlyingClose = underlyingClose
+
         if method == 'simple':
             # 按行权价分组，并计算认购和认购的权利金价差，存入列表，通过排序得出平值期权
             grouped = df.groupby('strikePrice')
@@ -2190,21 +2342,18 @@ class NeutralContractAnalyzer(LoggerWrapper):
             atmDf = groupedDict.get(atmStrike)  # 获取保存平值期权两个合约的dataframe
             self.strikePriceGroupedContractDict = groupedDict
         elif method == 'match':
-            dt = strToDate(df['date'].iloc[0])
-            underlyingClose = self.getUnderlyingPrice().close[dt]
+            # dt = strToDate(df['date'].iloc[0])
+            # underlyingClose = self.getUnderlyingPrice().close[dt]
 
             df.sort_values(by='strikePrice', inplace=True)
             callDf = df[df.contract_type == 'CO']
             putDf = df[df.contract_type == 'PO']
 
-            # print(underlyingClose)
-            # print(callDf.strikePrice.values)
             strikePriceArray = callDf.strikePrice.values
             strikeUnderlyingSpread = abs(strikePriceArray - underlyingClose * 1000)
             closestIdx = np.argmin(strikeUnderlyingSpread)
             closestStrike = strikePriceArray[closestIdx]
             if abs(closestStrike - underlyingClose * 1000) / float(closestStrike) < 0.005:
-                # print(dateToStr(dt), closestStrike, underlyingClose)
                 callLeg = callDf[callDf.strikePrice == closestStrike].iloc[0]
                 putLeg = putDf[putDf.strikePrice == closestStrike].iloc[0]
             else:
@@ -2255,7 +2404,11 @@ class NeutralContractAnalyzer(LoggerWrapper):
 
             try:
                 callStrikePrice = strikePriceList[atmIndex + level]
-                putStrikePrice = strikePriceList[atmIndex - level]
+                if atmIndex - level >= 0:
+                    putStrikePrice = strikePriceList[atmIndex - level]
+                else:
+                    self.error(u'沽档位不足')
+                    return
             except IndexError:
                 # 部分时间波动较大，导致平值上下的档位不足，则不采集当日的数据。
                 self.info(u'档位超出所有行权价范围！')
@@ -2280,7 +2433,7 @@ class NeutralContractAnalyzer(LoggerWrapper):
                 callIdx = strikePriceList.index(callStrikePrice) + level
                 putIdx = strikePriceList.index(putStrikePrice) - level
                 if putIdx < 0:
-                    self.error(u'档位不足！')
+                    self.error(u'沽档位不足！')
                     return
                 callLeg = self.calls[self.calls.strikePrice == strikePriceList[callIdx]]
                 putLeg = self.puts[self.puts.strikePrice == strikePriceList[putIdx]]
@@ -2366,27 +2519,25 @@ class NeutralContractAnalyzer(LoggerWrapper):
         saveCsv(df, save_fp)
         return df
 
-    def getNeutralNextTradeDayBar(self, start, end, group='atm', method='match', isIncludePre=False, *arg, **kwargs):
+    def getNeutralNextTradeDayBar(self, start, end, group='atm', method='match', *arg, **kwargs):
         """
-        获取delta中性组合（平值或宽跨式组合）次交易日的连续分钟线数据汇总。
+        获取delta中性组合（平值或宽跨式组合）今交易日14：50-次交易日的连续分钟线数据汇总。
         :param start: str
         :param end: str
         :param group: str. 'atm' or 'straddle'
         :param method: str. 'simple' or 'match'
-        :param isIncluePre: Bool. 是否包含昨日最后5分钟的交易数据（包含了次日高低开的情况）
         :return:
         """
-        preFlag = 'includePre' if isIncludePre else 'excludePre'
         if group == 'atm':
             func = self.getAtmContract
-            save_fn = 'atm_continuous_bar_{}_{}.csv'.format(method, preFlag)
+            save_fn = 'atm_continuous_bar_{}.csv'.format(method)
         elif group == 'straddle':
             func = self.getStraddleContract
             if 'level' in kwargs:
                 level = kwargs['level']
             else:
                 level = 1
-            save_fn = 'straddle_{}_continuous_bar_{}_{}.csv'.format(level, method, preFlag)
+            save_fn = 'straddle_{}_continuous_bar_{}.csv'.format(level, method)
         else:
             self.error(u'错误的组合类型')
             return
@@ -2396,20 +2547,16 @@ class NeutralContractAnalyzer(LoggerWrapper):
         allList = []
         for tradeDay in tradeDays:
             self.info(u'获取delta中性组合分钟数据：{}'.format(dateToStr(tradeDay)))
-            if isIncludePre:
-                startDt = datetime.combine(tradeDay, time(14, 55, 0))
-                nextTradeDay = self.jqsdk.getNextTradeDay(startDt)
-                endDt = datetime.combine(nextTradeDay, time(14, 55, 0))
-            else:
-                startDt = datetime.combine(tradeDay, time(16, 0, 0))
-                nextTradeDay = self.jqsdk.getNextTradeDay(startDt)
-                endDt = datetime.combine(nextTradeDay, time(16, 0, 0))
+            startDt = datetime.combine(tradeDay, time(14, 50, 0))
+            nextTradeDay = self.jqsdk.getNextTradeDay(startDt)
+            endDt = datetime.combine(nextTradeDay, time(16, 0, 0))
             if endDt >= datetime.now():
                 self.info(u'该交易日尚未结束，数据尚未更新！')
                 break
 
             fn = 'option_daily_{}.csv'.format(dateToStr(tradeDay))
             fp = os.path.join(self.jqsdk.getPricePath('option', 'daily'), fn)
+
             groupDf = func(fp, method=method, *arg, **kwargs)
             if groupDf is None:
                 continue
@@ -2435,24 +2582,22 @@ class NeutralContractAnalyzer(LoggerWrapper):
         saveCsv(df, save_fp)
         return df
 
-    def updateNeutralNextTradeDayBar(self, end=None, group='atm', method='match', isIncludePre=False, *args, **kwargs):
+    def updateNeutralNextTradeDayBar(self, end=None, group='atm', method='match', *args, **kwargs):
         """
-        更新delta中性组合（平值或宽跨式组合）次交易日的连续分钟线数据。
-        :param isIncludePre: Bool
+        更新delta中性组合连续分钟线数据。
         :param end: str
         :param group: str. 'atm' or 'straddle'
         :param method: str. 'match' or 'simple'
         :return:
         """
-        preFlag = 'includePre' if isIncludePre else 'excludePre'
         if group == 'atm':
-            fn = 'atm_continuous_bar_{}_{}.csv'.format(method, preFlag)
+            fn = 'atm_continuous_bar_{}.csv'.format(method)
         elif group == 'straddle':
             if 'level' in kwargs:
                 level = kwargs['level']
             else:
                 level = 1
-            fn = 'straddle_{}_continuous_bar_{}_{}.csv'.format(level, method, preFlag)
+            fn = 'straddle_{}_continuous_bar_{}.csv'.format(level, method)
         else:
             self.error(u'错误的组合类型')
             return
@@ -2464,33 +2609,29 @@ class NeutralContractAnalyzer(LoggerWrapper):
 
         fp = os.path.join(self.jqsdk.getResearchPath(OPTION, 'atm'), fn)
         if not os.path.exists(fp):
-            self.getNeutralNextTradeDayBar('2017-01-01', end, group=group, method=method, isIncludePre=isIncludePre,
-                                           *args, **kwargs)
+            self.getNeutralNextTradeDayBar('2017-01-01', end, group=group, method=method, *args, **kwargs)
         else:
             df = pd.read_csv(fp, index_col=0, parse_dates=True)
             lastDay = df.index.tolist()[-1].strftime('%Y-%m-%d')
             if strToDate(lastDay) >= strToDate(end):
                 self.info(u'中性组合的分钟线数据是最新的！')
             else:
-                df_new = self.getNeutralNextTradeDayBar(lastDay, end, group=group, method=method,
-                                                        isIncludePre=isIncludePre, *args, **kwargs)
+                df_new = self.getNeutralNextTradeDayBar(lastDay, end, group=group, method=method, *args, **kwargs)
                 df = df.append(df_new)
                 saveCsv(df, fp)
 
-    def loadNeutralContinuousBar(self, group='atm', method='match', isIncludePre=False, level=1):
+    def loadNeutralContinuousBar(self, group='atm', method='match', level=1):
         """
         获取中性组合的分钟bar
-        :param isIncludePre: Bool
         :param group: str. 'atm' or 'straddle'
         :param method: str. 'simple' or 'match'
         :param level: int
         :return:
         """
-        preFlag = 'includePre' if isIncludePre else 'excludePre'
         if group == 'atm':
-            fn = 'atm_continuous_bar_{}_{}.csv'.format(method, preFlag)
+            fn = 'atm_continuous_bar_{}.csv'.format(method)
         elif group == 'straddle':
-            fn = 'straddle_{}_continuous_bar_{}_{}.csv'.format(level, method, preFlag)
+            fn = 'straddle_{}_continuous_bar_{}.csv'.format(level, method)
         else:
             return
         fp = os.path.join(self.jqsdk.getResearchPath(OPTION, 'atm'), fn)
@@ -2503,40 +2644,129 @@ class NeutralContractAnalyzer(LoggerWrapper):
         s = pd.Series()
         for i in ['tradeDay', 'month', 'groupLabel', 'underlyingClose']:
             s[i] = df.iloc[0][i]
-        s['open'] = df.iloc[0]['open']
+        s['pre_close'] = df.iloc[10]['close']
+        s['open'] = df.iloc[11]['open']
+        s['open-1'] = df.iloc[12]['open']
+        s['open-2'] = df.iloc[13]['open']
+        s['open-3'] = df.iloc[14]['open']
         s['close'] = df.iloc[-1]['close']
         s['high'] = df.high.values.max()
         s['low'] = df.low.values.min()
-        #
+
         df2 = pd.DataFrame(s)
         df2 = df2.T
         return df2
 
-    def getOHLCdaily(self, isIncludePre=False, *args, **kwargs):
+    def getOHLCdaily(self, group='atm', method='match', level=1):
         """
         分钟线合成日线
-        :param isIncludePre:
-        :param data: pd.DataFrame
+        :param group: str. 'atm' or 'straddle'
+        :param method: str. 'simple' or 'match'
+        :param level: int
         :return:
         """
-        basicInfo = ['open', 'high', 'low', 'close']
-        data = self.loadNeutralContinuousBar(isIncludePre=isIncludePre, *args, **kwargs)
-        if isIncludePre:
-            df = data.groupby('tradeDay').apply(self.barToDaily)
-            df.set_index('tradeDay', inplace=True)
-            df.index = df.index.map(strToDate)
-            return df
+        if group == 'atm':
+            fn = 'atm_ohlc_{}.csv'.format(method)
+        elif group == 'straddle':
+            fn = 'straddle_{}_ohlc_{}.csv'.format(level, method)
         else:
-            addInfo = ['tradeDay', 'month', 'groupLabel', 'underlyingClose']
-            addInfoDict = {k: 'first' for k in addInfo}
-            ohlcDict = {'open': 'first', 'high': 'max', 'low': 'min', 'close': 'last'}
-            ohlcDict.update(addInfoDict)
+            return
 
-            basicInfo.extend(addInfo)
-            # print(data)
-            df = data.resample('D').apply(ohlcDict).dropna(how='all')
-            df = df[basicInfo]
-            return df
+        data = self.loadNeutralContinuousBar(group=group, method=method, level=level)
+
+        df = data.groupby('tradeDay').apply(self.barToDaily)
+        df.set_index('tradeDay', inplace=True)
+        df.index = df.index.map(strToDate)
+        saveCsv(df, self.getOutputPath(fn))
+        return df
+
+    def dailyBackTest(self, group='atm', method='match', level=1, start='pre_close'):
+        if group == 'atm':
+            fn = 'atm_ohlc_{}.csv'.format(method)
+        elif group == 'straddle':
+            fn = 'straddle_{}_ohlc_{}.csv'.format(level, method)
+        else:
+            return
+
+        df = pd.read_csv(self.getOutputPath(fn), index_col=0, parse_dates=True)
+        df['daily_trade_return'] = (df[start] - df['close']) * 10000
+        df['trade_net'] = df['daily_trade_return'].cumsum()
+
+        if start == 'pre_close':
+            df['commission'] = 0
+            df['slippage'] = 0
+
+            n = df['commission'].values
+            m = df['slippage'].values
+            for idx, value in enumerate(n[:]):
+                if idx % self.interval == 0:
+                    n[idx] += self.commission * 2
+            for idx, value in enumerate(m[:]):
+                if idx % self.interval == 0:
+                    m[idx] += self.slippage * 2 * 2
+        else:
+            df['commission'] = 4
+            df['slippage'] = 8
+
+        df['total_return'] = df['daily_trade_return'] - df['commission'] - df['slippage']
+        df['net'] = df['total_return'].cumsum()
+        win = df[df['total_return'] > 0]
+        lose = df[df['total_return'] <= 0]
+        saveCsv(df, self.getOutputPath('backtesting_{}_{}_{}_{}.csv'.format(group, method, level, start)))
+
+        allCount = len(df)
+        winCount = len(win)
+        loseCount = len(lose)
+        top10Lose = lose['total_return'].sort_values()[0: int(loseCount * 0.1)].sum()
+        top20Lose = lose['total_return'].sort_values()[0: int(loseCount * 0.2)].sum()
+
+        profit = df['total_return'].sum()
+        average_profit = profit / float(allCount)
+        average_win = win['total_return'].sum() / float(winCount)
+        average_lose = lose['total_return'].sum() / float(loseCount)
+
+        maxWin = win['total_return'].max()
+        maxLose = lose['total_return'].min()
+
+        print('=' * 30)
+        print(u'组合：{}, Delta中性方法：{}，调仓时间：{}'.format(group, method, start))
+        print(u'总交易日：%d' % allCount)
+        print(u'盈利交易日：%d' % winCount)
+        print(u'亏损交易日：%d' % loseCount)
+        print(u'总利润：%d' % profit)
+        print(u'平均利润：%.2f' % average_profit)
+        print(u'手续费：%d' % df['commission'].sum())
+        print(u'交易滑点: %d' % df['slippage'].sum())
+        print(u'胜率：%.2f %%' % (float(winCount) / float(allCount) * 100))
+        print(u'盈利总额：%d' % win['total_return'].sum())
+        print(u'亏损总额：%d' % lose['total_return'].sum())
+        print(u'亏损排名前10分位的亏损总额: %d' % top10Lose)
+        print(u'亏损排名前10分位的亏损占比: %.2f %%' % (top10Lose / lose['total_return'].sum() * 100))
+        print(u'亏损排名前20分位的亏损总额: %d' % top20Lose)
+        print(u'亏损排名前20分位的亏损占比: %.2f %%' % (top20Lose / lose['total_return'].sum() * 100))
+        print(u'平均盈利金额：%.2f' % average_win)
+        print(u'平均亏损金额：%.2f' % average_lose)
+        print(u'最大盈利金额：%d' % maxWin)
+        print(u'最大亏损金额：%d' % maxLose)
+        print(u'盈亏比：%.2f' % (abs(average_win / average_lose)))
+
+    def backTestingCompare(self, method='match', start='pre_close'):
+        dfs = []
+        atmFn = 'backtesting_atm_{}_1_{}.csv'.format(method, start)
+        dfAtm = pd.read_csv(self.getOutputPath(atmFn), index_col=0, parse_dates=True)
+        atmReturn = dfAtm['daily_trade_return']
+        atmReturn.name = 'atm'
+        dfs.append(atmReturn)
+
+        for i in range(1, 4):
+            fn = 'backtesting_straddle_{}_{}_{}.csv'.format(method, i, start)
+            df = pd.read_csv(self.getOutputPath(fn), index_col=0, parse_dates=True)
+            tradeReturn = df['daily_trade_return']
+            tradeReturn.name = 'strangle_{}'.format(i)
+            dfs.append(tradeReturn)
+
+        resDf = pd.concat(dfs, axis=1)
+        saveCsv(resDf, self.getOutputPath('backtesting_compare.csv'))
 
     def removeOHLCgap(self, df=None, *args, **kwargs):
         """

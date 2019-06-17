@@ -67,8 +67,8 @@ def plotAtm():
     # plotter.updateMoneyFlowOf50Etf()
     # plotter.plotMoneyFlowOf50Etf()
 
-    print(u'update atm continuous bar')
-    plotter.updateNeutralNextTradeDayBar()
+    # print(u'update atm continuous bar')
+    # plotter.updateNeutralNextTradeDayBar()
 
 
 def plotEtfRatio():

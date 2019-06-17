@@ -20,6 +20,9 @@ class TestVixAnalyzer(unittest.TestCase):
     def setUp(self):
         self.obj = VixAnalyzer(jqsdk, '510050.XSHG')
 
+    def testUpdateVixData(self):
+        self.obj.updateVixData()
+
     def testGetVix(self):
         df = self.obj.getVix()
         print(df.index)
@@ -43,6 +46,9 @@ class TestVixAnalyzer(unittest.TestCase):
 
     def testAnalyzerVixAndUnderlying(self):
         self.obj.analyzeVixAndUnderlying()
+        # self.obj.analyzeVixAndUnderlying(start='2019-01-01')
+        # self.obj.analyzeVixAndUnderlying(start='2018-06-10')
+        # self.obj.analyzeVixAndUnderlying(start='2017-06-10')
 
 
 class TestUnderlyingAnalyzer(unittest.TestCase):
@@ -64,6 +70,15 @@ class TestUnderlyingAnalyzer(unittest.TestCase):
 
     def testPlotVolatiltiy(self):
         self.obj.plotVolatilityBox()
+
+    def testPlotChange(self):
+        self.obj.plotChange()
+        # self.obj.analyzerChange(start='2018-06-11')
+        # self.obj.analyzerChange(start='2016-06-11')
+        # self.obj.analyzerChange(start='2019-01-01')
+
+    def testAnalyzeChange(self):
+        self.obj.analyzeChange()
 
 
 class TestCorrAnalyzer(unittest.TestCase):
@@ -182,7 +197,7 @@ class TestPositionDiffTrend(unittest.TestCase):
 
 class TestNeutralAnalyzer(unittest.TestCase):
     def setUp(self):
-        self.obj = NeutralContractAnalyzer('510050.XSHG')
+        self.obj = NeutralContractAnalyzer(jqsdk, '510050.XSHG')
 
         filename = 'option_daily_2018-02-09.csv'
         self.fp = os.path.join(self.obj.jqsdk.getPricePath('option', 'daily'), filename)
@@ -210,32 +225,37 @@ class TestNeutralAnalyzer(unittest.TestCase):
         # df.to_csv(getTestPath('straddle{}_contract_simple.csv'.format(level)))
 
     def testGetNeutralGroupInfo(self):
-        # self.obj.getNeutralGroupInfo('2019-05-21', '2019-05-31')
-        self.obj.getNeutralGroupInfo('2017-01-01', '2019-05-28', method='simple')
-        # self.obj.getNeutralGroupInfo('2017-01-01', '2019-05-28', group='straddle', level=1)
-        # self.obj.getNeutralGroupInfo('2017-01-01', '2019-05-28', group='straddle', level=2)
-        # self.obj.getNeutralGroupInfo('2017-01-01', '2019-05-28', group='straddle', level=3)
+        # self.obj.getNeutralGroupInfo('2017-01-01', '2019-06-11')
+        # self.obj.getNeutralGroupInfo('2017-01-01', '2019-06-11', method='simple')
+
+        # self.obj.getNeutralGroupInfo('2017-01-01', '2019-06-12', group='straddle', level=1)
+        # self.obj.getNeutralGroupInfo('2017-01-01', '2019-06-12', group='straddle', method='simple', level=1)
+
+        # self.obj.getNeutralGroupInfo('2017-01-01', '2019-06-12', group='straddle', level=2)
+        # self.obj.getNeutralGroupInfo('2017-01-01', '2019-06-12', group='straddle', method='simple', level=2)
+
+        self.obj.getNeutralGroupInfo('2017-01-01', '2019-06-12', group='straddle', level=3)
+        self.obj.getNeutralGroupInfo('2017-01-01', '2019-06-12', group='straddle', method='simple', level=3)
 
     def testGetNeutralNextTradeDayBar(self):
         # self.obj.getNeutralNextTradeDayBar('2019-05-20', '2019-05-24')
         self.obj.getNeutralNextTradeDayBar('2019-05-20', '2019-05-24', group='straddle', level=2)
 
     def testUpdateNeutralNextTradeDayBar(self):
+        # end = '2019-05-28'
         # end = '2017-02-28'
         end = None
-        # method = 'match'
-        method = 'simple'
-        isIncludePre = True
+        method = 'match'
+        # method = 'simple'
 
-        self.obj.updateNeutralNextTradeDayBar(end=end, group='atm', method=method, isIncludePre=False)
-        self.obj.updateNeutralNextTradeDayBar(end=end, group='atm', method=method, isIncludePre=isIncludePre)
+        # self.obj.updateNeutralNextTradeDayBar(end=end, group='atm', method=method)
 
         # self.obj.updateNeutralNextTradeDayBar(end=end, group='atm', method=method, isIncludePre=False)
         # self.obj.updateNeutralNextTradeDayBar(end=end, group='atm', method=method, isIncludePre=isIncludePre)
 
         # self.obj.updateNeutralNextTradeDayBar(end=end, group='straddle', method=method, level=1)
         # self.obj.updateNeutralNextTradeDayBar(end=end, group='straddle', method=method, level=2)
-        # self.obj.updateNeutralNextTradeDayBar(end=end, group='straddle', method=method, level=3)
+        self.obj.updateNeutralNextTradeDayBar(end=end, group='straddle', method=method, level=3)
 
         # self.obj.updateNeutralNextTradeDayBar(end=end, group='straddle', method=method, level=1, isIncludePre=isIncludePre)
 
@@ -253,18 +273,54 @@ class TestNeutralAnalyzer(unittest.TestCase):
         # df = self.obj.getOHLCdaily(method=method)
         # df.to_csv(getTestPath('atm_ohlc_{}.csv'.format(method)))
 
-        method = 'match'
-        df = self.obj.getOHLCdaily(method=method, isIncludePre=True)
-        df.to_csv(getTestPath('atm_ohlc_{}_includePre.csv'.format(method)))
+        # method = 'simple'
+        # self.obj.getOHLCdaily(method=method)
 
-        # df = self.obj.getOHLCdaily(group='straddle')
-        # df.to_csv(getTestPath('straddle_1_ohlc.csv'))
-        #
-        # df = self.obj.getOHLCdaily(group='straddle', level=2)
-        # df.to_csv(getTestPath('straddle_2_ohlc.csv'))
-        #
-        # df = self.obj.getOHLCdaily(group='straddle', level=3)
-        # df.to_csv(getTestPath('straddle_3_ohlc.csv'))
+        # method = 'match'
+        # self.obj.getOHLCdaily(group='straddle', level=1, method=method)
+        # method = 'simple'
+        # self.obj.getOHLCdaily(group='straddle', level=1, method=method)
+
+        # method = 'match'
+        # self.obj.getOHLCdaily(group='straddle', level=2, method=method)
+        # method = 'simple'
+        # self.obj.getOHLCdaily(group='straddle', level=2, method=method)
+
+        method = 'match'
+        self.obj.getOHLCdaily(group='straddle', level=3, method=method)
+        method = 'simple'
+        self.obj.getOHLCdaily(group='straddle', level=3, method=method)
+
+    def testDailyBackTest(self):
+        # self.obj.dailyBackTest()
+        # self.obj.dailyBackTest(start='open')
+
+        # self.obj.dailyBackTest(method='simple')
+        # self.obj.dailyBackTest(method='simple', start='open')
+
+        # self.obj.setSlippage(1)
+        # self.obj.setInterval(4)
+        # self.obj.dailyBackTest(group='straddle', method='match', level=1, start='pre_close')
+        # self.obj.dailyBackTest(group='straddle', method='simple', level=1, start='pre_close')
+        # self.obj.dailyBackTest(group='straddle', method='match', level=1, start='open')
+        # self.obj.dailyBackTest(group='straddle', method='simple', level=1, start='open')
+
+        # self.obj.setSlippage(1)
+        # self.obj.setInterval(4)
+        # self.obj.dailyBackTest(group='straddle', method='match', level=2, start='pre_close')
+        # self.obj.dailyBackTest(group='straddle', method='simple', level=2, start='pre_close')
+        # self.obj.dailyBackTest(group='straddle', method='match', level=2, start='open')
+        # self.obj.dailyBackTest(group='straddle', method='simple', level=2, start='open')
+
+        self.obj.setSlippage(1)
+        self.obj.setInterval(4)
+        self.obj.dailyBackTest(group='straddle', method='match', level=3, start='pre_close')
+        self.obj.dailyBackTest(group='straddle', method='simple', level=3, start='pre_close')
+        self.obj.dailyBackTest(group='straddle', method='match', level=3, start='open')
+        self.obj.dailyBackTest(group='straddle', method='simple', level=3, start='open')
+
+    def testBacktestingCompare(self):
+        self.obj.backTestingCompare(method='match', start='pre_close')
 
     def testRemoveGap(self):
         df = self.obj.removeOHLCgap()
