@@ -37,6 +37,8 @@ def plotQvix():
     plotter.plotAll()
     print(u"绘制50etf波动率差")
     plotter.plotVolDiff()
+    print(u'绘制IFIHIC价差')
+    plotter.plotICIHIF()
 
 
 def plotAtm():
@@ -77,16 +79,30 @@ def plotEtfRatio():
     plotter.plotEtfMarketRatio()
 
 
+def vixHist():
+    vixAnalyzer.updateVixData()
+    underlyingAnalyzer.updatePrice(start='2005-02-23')
+    vixAnalyzer.plotPercentile([0, 120, 250, 500])
+    vixAnalyzer.plotHvPercentile([0, 250])
+    vixAnalyzer.plotVolatilityDiff([20, 30])
+    vixAnalyzer.getAllVixPercentileDist([0, 120, 250, 500])
+    vixAnalyzer.plotPercentileDist([0, 120, 250, 500])
+    vixAnalyzer.render('qvix', 'qvix_research.html')
+
+
 def main():
     updateData()
     # plotPosition()
     plotRatio()
-    plotQvix()
+
     plotAtm()
     # plotEtfRatio()
 
-    get_qvix_data()
     analyzeVix.plot_atm_ohlc_daily()
+
+    vixHist()
+
+    plotQvix()
 
 
 if __name__ == '__main__':
@@ -101,8 +117,14 @@ if __name__ == '__main__':
 
     from datetime import datetime, timedelta
     from easeData.collector import JQDataCollector
-    from easeData.analyze import PositionDiffPlotter, SellBuyRatioPlotter, QvixPlotter
+    from easeData.analyze import (PositionDiffPlotter, SellBuyRatioPlotter, QvixPlotter,
+                                  VixAnalyzer, OptionUnderlyingAnalyzer)
     from easeData.analyze import get_qvix_data
     from easeData.functions import dateToStr
+
+    collector = JQDataCollector()
+
+    vixAnalyzer = VixAnalyzer(collector, '510050.XSHG')
+    underlyingAnalyzer = OptionUnderlyingAnalyzer(collector, '510050.XSHG')
 
     main()

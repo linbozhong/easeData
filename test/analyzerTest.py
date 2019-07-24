@@ -33,15 +33,25 @@ class TestVixAnalyzer(unittest.TestCase):
         df = self.obj.getVix()
         df.to_csv(getTestPath('vix_hist_vol_test.csv'))
 
+    def testGetHVPercentile(self):
+        self.obj.getHVPercentile(20)
+        df = self.obj.getVix()
+        df.to_csv(getTestPath('HV20_percentile.csv'))
+
     def testGetPercentile(self):
         print(self.obj.getVixPercentile())
-        print(self.obj.getVixPercentile())
         self.obj.vix.to_csv(getTestPath('vix_test.csv'))
+
+    def testGetPercentileDist(self):
+        # self.obj.getVixPercentileDist()
+        self.obj.getAllVixPercentileDist([0, 120, 250, 500])
 
     def testPlotPercentile(self):
         # self.obj.getVixPercentile()
         self.obj.plotPercentile([0, 120, 250, 500])
+        self.obj.plotHvPercentile([0, 250])
         self.obj.plotVolatilityDiff([20, 30])
+        self.obj.plotPercentileDist([0, 120, 250, 500])
         self.obj.render('qvix', 'qvix_research.html')
 
     def testAnalyzerVixAndUnderlying(self):
@@ -248,48 +258,21 @@ class TestNeutralAnalyzer(unittest.TestCase):
         method = 'match'
         # method = 'simple'
 
-        # self.obj.updateNeutralNextTradeDayBar(end=end, group='atm', method=method)
-
-        # self.obj.updateNeutralNextTradeDayBar(end=end, group='atm', method=method, isIncludePre=False)
-        # self.obj.updateNeutralNextTradeDayBar(end=end, group='atm', method=method, isIncludePre=isIncludePre)
-
-        # self.obj.updateNeutralNextTradeDayBar(end=end, group='straddle', method=method, level=1)
-        # self.obj.updateNeutralNextTradeDayBar(end=end, group='straddle', method=method, level=2)
+        self.obj.updateNeutralNextTradeDayBar(end=end, group='atm', method=method)
+        self.obj.updateNeutralNextTradeDayBar(end=end, group='straddle', method=method, level=1)
+        self.obj.updateNeutralNextTradeDayBar(end=end, group='straddle', method=method, level=2)
         self.obj.updateNeutralNextTradeDayBar(end=end, group='straddle', method=method, level=3)
 
-        # self.obj.updateNeutralNextTradeDayBar(end=end, group='straddle', method=method, level=1, isIncludePre=isIncludePre)
-
-        # self.obj.updateNeutralNextTradeDayBar(end=end, group='straddle', method=method, level=2, isIncludePre=False)
-        # self.obj.updateNeutralNextTradeDayBar(end=end, group='straddle', method=method, level=2, isIncludePre=isIncludePre)
-
-        # self.obj.updateNeutralNextTradeDayBar(end=end, group='straddle', method=method, level=3, isIncludePre=False)
-        # self.obj.updateNeutralNextTradeDayBar(end=end, group='straddle', method=method, level=3, isIncludePre=isIncludePre)
-
-        # self.obj.updateNeutralNextTradeDayBar(end=end, group='straddle', method=method, level=2)
-        # self.obj.updateNeutralNextTradeDayBar(end=end, group='straddle', method=method, level=3)
-
     def testGetOHLC(self):
-        # method = 'match'
-        # df = self.obj.getOHLCdaily(method=method)
-        # df.to_csv(getTestPath('atm_ohlc_{}.csv'.format(method)))
-
-        # method = 'simple'
-        # self.obj.getOHLCdaily(method=method)
-
-        # method = 'match'
-        # self.obj.getOHLCdaily(group='straddle', level=1, method=method)
-        # method = 'simple'
-        # self.obj.getOHLCdaily(group='straddle', level=1, method=method)
-
-        # method = 'match'
-        # self.obj.getOHLCdaily(group='straddle', level=2, method=method)
-        # method = 'simple'
-        # self.obj.getOHLCdaily(group='straddle', level=2, method=method)
-
         method = 'match'
+        self.obj.getOHLCdaily(method=method)
+        self.obj.getOHLCdaily(group='straddle', level=1, method=method)
+        self.obj.getOHLCdaily(group='straddle', level=2, method=method)
         self.obj.getOHLCdaily(group='straddle', level=3, method=method)
-        method = 'simple'
-        self.obj.getOHLCdaily(group='straddle', level=3, method=method)
+
+
+    def testGetLast5Days(self):
+        self.obj.getLast5Days()
 
     def testDailyBackTest(self):
         # self.obj.dailyBackTest()
@@ -312,15 +295,26 @@ class TestNeutralAnalyzer(unittest.TestCase):
         # self.obj.dailyBackTest(group='straddle', method='match', level=2, start='open')
         # self.obj.dailyBackTest(group='straddle', method='simple', level=2, start='open')
 
+        # self.obj.setSlippage(1)
+        # self.obj.setInterval(4)
+        # self.obj.dailyBackTest(group='straddle', method='match', level=3, start='pre_close')
+        # self.obj.dailyBackTest(group='straddle', method='simple', level=3, start='pre_close')
+        # self.obj.dailyBackTest(group='straddle', method='match', level=3, start='open')
+        # self.obj.dailyBackTest(group='straddle', method='simple', level=3, start='open')
+
+
+        self.obj.dailyBackTest(group='atm', method='match', start='pre_close', isLast5=False)
         self.obj.setSlippage(1)
         self.obj.setInterval(4)
-        self.obj.dailyBackTest(group='straddle', method='match', level=3, start='pre_close')
-        self.obj.dailyBackTest(group='straddle', method='simple', level=3, start='pre_close')
-        self.obj.dailyBackTest(group='straddle', method='match', level=3, start='open')
-        self.obj.dailyBackTest(group='straddle', method='simple', level=3, start='open')
+        self.obj.dailyBackTest(group='straddle', method='match', level=1, start='pre_close', isLast5=False)
+        self.obj.dailyBackTest(group='straddle', method='match', level=2, start='pre_close', isLast5=False)
+        self.obj.dailyBackTest(group='straddle', method='match', level=3, start='pre_close', isLast5=False)
 
     def testBacktestingCompare(self):
         self.obj.backTestingCompare(method='match', start='pre_close')
+        self.obj.backTestingPosition()
+        # self.obj.analyzeStop()
+
 
     def testRemoveGap(self):
         df = self.obj.removeOHLCgap()
@@ -598,6 +592,9 @@ class TestQvixPlotter(unittest.TestCase):
 
     def testPlotVolDiff(self):
         self.obj.plotVolDiff()
+
+    def testPlotICIHIFDiff(self):
+        self.obj.plotICIHIF()
 
 
 if __name__ == '__main__':

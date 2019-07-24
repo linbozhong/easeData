@@ -1820,6 +1820,7 @@ class VixAnalyzer(LoggerWrapper):
         else:
             name_dict = {
                 '1': 'datetime',
+                '1 ': 'datetime',
                 '2': 'open',
                 '3': 'high',
                 '4': 'low',
@@ -1827,6 +1828,13 @@ class VixAnalyzer(LoggerWrapper):
             }
             df = pd.DataFrame(csv_list)
             df.rename(columns=name_dict, inplace=True)
+
+            while True:
+                if df.iloc[-1]['open'] == '':
+                    df = df[:-1]
+                else:
+                    break
+
             df['datetime'] = df['datetime'].map(
                 lambda t_stamp: dateToStr(datetime.fromtimestamp(float(t_stamp) / 1000)))
             for item in ['open', 'high', 'low', 'close']:
@@ -1846,6 +1854,29 @@ class VixAnalyzer(LoggerWrapper):
             self.vix = pd.read_csv(self.dataFilePath, index_col=0, parse_dates=True)
         return self.vix
 
+    def getVixPercentileDist(self, n=0):
+        if n == 0:
+            name = 'History'
+        else:
+            name = 'Recent_{}_days'.format(n)
+        df = self.getVix()
+        df = df.iloc[-n:]
+        seq = df['close'].values
+        percentSeq = [np.percentile(seq, i) for i in range(0, 105, 5)]
+        s = pd.Series(percentSeq, index=range(0, 105, 5))
+        s.name = name
+        return s
+
+    def getAllVixPercentileDist(self, nList):
+        sList = list()
+        for n in nList:
+            s = self.getVixPercentileDist(n)
+            sList.append(s)
+        df = pd.concat(sList, axis=1)
+        df.index = df.index.map(lambda x: '{}%'.format(x))
+        saveCsv(df, self.getOutputPath('vix_percentile_dist.csv'))
+        return df
+
     def getVixPercentile(self, n=0):
         """
         计算vix所处的百分位
@@ -1860,6 +1891,24 @@ class VixAnalyzer(LoggerWrapper):
         else:
             name = 'percentile_{}'.format(n)
             df[name] = df['close'].rolling(n).apply(self.getPercentile, raw=True)
+        return df[name]
+
+    def getHVPercentile(self, n=0):
+        """
+        计算HV所处的百分位
+        :param n: int. 近n个交易日的hv20数据，取0表示使用自有50etf期权的历史数据。
+        :return:
+        """
+        df = self.getVix()
+        self.getHisVolatility()
+        sourceName = 'HV_20'
+        if n == 0:
+            name = 'percentile_HV20'
+            seq = df[sourceName].values
+            df[name] = df[sourceName].map(lambda number: stats.percentileofscore(seq, number))
+        else:
+            name = 'percentile_HV20_{}'.format(n)
+            df[name] = df[sourceName].rolling(n).apply(self.getPercentile, raw=True)
         return df[name]
 
     def getHisVolatility(self, n=20):
@@ -1924,7 +1973,7 @@ class VixAnalyzer(LoggerWrapper):
         输出vix百分位的折线图
         :return:
         """
-        title = u'波动率百分位图'
+        title = u'波动率指数百分位图'
         colNameList = []
         for n in nList:
             if n == 0:
@@ -1934,6 +1983,42 @@ class VixAnalyzer(LoggerWrapper):
             self.getVixPercentile(n)
 
         self.plotter.setCsvData(self.vix)
+        line = self.plotter.plotLine(title, colNameList)
+        self.plotter.addRenderItem(line)
+
+    def plotHvPercentile(self, nList):
+        """
+        输出HV百分位的折线图
+        :return:
+        """
+        title = u'历史波动率百分位图'
+        colNameList = []
+        for n in nList:
+            if n == 0:
+                colNameList.append('percentile_HV20')
+            else:
+                colNameList.append('percentile_HV20_{}'.format(n))
+            self.getHVPercentile(n)
+
+        self.plotter.setCsvData(self.vix)
+        line = self.plotter.plotLine(title, colNameList)
+        self.plotter.addRenderItem(line)
+
+    def plotPercentileDist(self, nList):
+        """
+        绘制IV分位百分位分布
+        :param nList:
+        :return:
+        """
+        title = u'波动率指数分位分布值'
+        colNameList = []
+        if 0 in nList:
+            colNameList.append('History')
+        recentList = ['Recent_{}_days'.format(i) for i in nList if i != 0]
+        colNameList.extend(recentList)
+
+        df = self.getAllVixPercentileDist(nList)
+        self.plotter.setCsvData(df)
         line = self.plotter.plotLine(title, colNameList)
         self.plotter.addRenderItem(line)
 
@@ -2646,9 +2731,9 @@ class NeutralContractAnalyzer(LoggerWrapper):
             s[i] = df.iloc[0][i]
         s['pre_close'] = df.iloc[10]['close']
         s['open'] = df.iloc[11]['open']
-        s['open-1'] = df.iloc[12]['open']
-        s['open-2'] = df.iloc[13]['open']
-        s['open-3'] = df.iloc[14]['open']
+        # s['open-1'] = df.iloc[12]['open']
+        # s['open-2'] = df.iloc[13]['open']
+        # s['open-3'] = df.iloc[14]['open']
         s['close'] = df.iloc[-1]['close']
         s['high'] = df.high.values.max()
         s['low'] = df.low.values.min()
@@ -2680,7 +2765,21 @@ class NeutralContractAnalyzer(LoggerWrapper):
         saveCsv(df, self.getOutputPath(fn))
         return df
 
-    def dailyBackTest(self, group='atm', method='match', level=1, start='pre_close'):
+    def getLast5Days(self, method='match'):
+        atmFn = 'atm_ohlc_{}.csv'.format(method)
+        atmFp = self.getOutputPath(atmFn)
+        dfAtm = pd.read_csv(atmFp, index_col=0, parse_dates=True)
+        dfAtm = dfAtm.groupby('month').apply(lambda df: df.iloc[-5:])
+        saveCsv(dfAtm, self.getOutputPath('last5_' + atmFn))
+
+        for i in range(1, 4):
+            strangleFn = 'straddle_{}_ohlc_{}.csv'.format(i, method)
+            strangleFp = self.getOutputPath(strangleFn)
+            dfStrangle = pd.read_csv(strangleFp, index_col=0, parse_dates=True)
+            dfStrangle = dfStrangle.groupby('month').apply(lambda df: df.iloc[-5:])
+            saveCsv(dfStrangle, self.getOutputPath('last5_' + strangleFn))
+
+    def dailyBackTest(self, group='atm', method='match', level=1, start='pre_close', isLast5=False):
         if group == 'atm':
             fn = 'atm_ohlc_{}.csv'.format(method)
         elif group == 'straddle':
@@ -2688,8 +2787,12 @@ class NeutralContractAnalyzer(LoggerWrapper):
         else:
             return
 
+        if isLast5:
+            fn = 'last5_' + fn
+
         df = pd.read_csv(self.getOutputPath(fn), index_col=0, parse_dates=True)
         df['daily_trade_return'] = (df[start] - df['close']) * 10000
+        df['daily_max_drawback'] = (df[start] - df['high']) * 10000
         df['trade_net'] = df['daily_trade_return'].cumsum()
 
         if start == 'pre_close':
@@ -2712,7 +2815,11 @@ class NeutralContractAnalyzer(LoggerWrapper):
         df['net'] = df['total_return'].cumsum()
         win = df[df['total_return'] > 0]
         lose = df[df['total_return'] <= 0]
-        saveCsv(df, self.getOutputPath('backtesting_{}_{}_{}_{}.csv'.format(group, method, level, start)))
+
+        btFn = 'backtesting_{}_{}_{}_{}.csv'.format(group, method, level, start)
+        if isLast5:
+            btFn = 'last5_' + btFn
+        saveCsv(df, self.getOutputPath(btFn))
 
         allCount = len(df)
         winCount = len(win)
@@ -2754,19 +2861,137 @@ class NeutralContractAnalyzer(LoggerWrapper):
         dfs = []
         atmFn = 'backtesting_atm_{}_1_{}.csv'.format(method, start)
         dfAtm = pd.read_csv(self.getOutputPath(atmFn), index_col=0, parse_dates=True)
+        month = dfAtm['month']
         atmReturn = dfAtm['daily_trade_return']
-        atmReturn.name = 'atm'
+        atmReturn.name = 'atm_r'
+        atmDrawback = dfAtm['daily_max_drawback']
+        atmDrawback.name = 'atm_d'
+        dfs.append(month)
         dfs.append(atmReturn)
+        dfs.append(atmDrawback)
 
         for i in range(1, 4):
             fn = 'backtesting_straddle_{}_{}_{}.csv'.format(method, i, start)
             df = pd.read_csv(self.getOutputPath(fn), index_col=0, parse_dates=True)
             tradeReturn = df['daily_trade_return']
-            tradeReturn.name = 'strangle_{}'.format(i)
+            tradeReturn.name = 'strangle_{}_r'.format(i)
+            drawback = df['daily_max_drawback']
+            drawback.name = 'strangle_{}_d'.format(i)
             dfs.append(tradeReturn)
+            dfs.append(drawback)
 
         resDf = pd.concat(dfs, axis=1)
         saveCsv(resDf, self.getOutputPath('backtesting_compare.csv'))
+
+    def backTestingPosition(self):
+        margin_dict = OrderedDict()
+        margin_dict['atm'] = 7788
+        margin_dict['strangle_1'] = 6400
+        margin_dict['strangle_2'] = 5130
+        margin_dict['strangle_3'] = 4075
+
+        margin_level_dict = OrderedDict()
+        margin_level_dict['20%'] = 200000
+        margin_level_dict['30%'] = 300000
+        margin_level_dict['40%'] = 400000
+        margin_level_dict['50%'] = 500000
+        margin_level_dict['60%'] = 600000
+        margin_level_dict['70%'] = 700000
+
+        output_item = ['month']
+        # for item in margin_dict.keys():
+        #     output_item.append(item)
+
+        fp = self.getOutputPath('backtesting_compare.csv')
+        df = pd.read_csv(fp, index_col=0, parse_dates=True)
+
+        df['has_s1'] = df['strangle_1_r'].map(lambda x: 0 if np.isnan(x) else 1)
+        df['has_s2'] = df['strangle_2_r'].map(lambda x: 0 if np.isnan(x) else 1)
+        df['has_s3'] = df['strangle_3_r'].map(lambda x: 0 if np.isnan(x) else 1)
+        df['group_count'] = df['has_s1'] + df['has_s2'] + df['has_s3'] + 1
+        df.fillna(value=0, inplace=True)
+
+        for key, value in margin_level_dict.items():
+            group_margin = 'group_margin_{}'.format(key)
+            atm_count = 'atm_count_{}'.format(key)
+            s1_count = 's1_count_{}'.format(key)
+            s2_count = 's2_count_{}'.format(key)
+            s3_count = 's3_count_{}'.format(key)
+            atm_return = 'atm_return_{}'.format(key)
+            s1_return = 's1_return_{}'.format(key)
+            s2_return = 's2_return_{}'.format(key)
+            s3_return = 's3_return_{}'.format(key)
+            all_return = 'returns_{}'.format(key)
+            atm_drawback = 'atm_drawback_{}'.format(key)
+            s1_drawback = 's1_drawback_{}'.format(key)
+            s2_drawback = 's2_drawback_{}'.format(key)
+            s3_drawback = 's3_drawback_{}'.format(key)
+            all_drawback = 'drawbacks_{}'.format(key)
+
+            output_item.append(all_return)
+            output_item.append(all_drawback)
+
+            df[group_margin] = value / df['group_count'] / 1.2
+            df[atm_count] = np.floor(df[group_margin] / margin_dict['atm'])
+            df[s1_count] = np.floor(df[group_margin] / margin_dict['strangle_1']) * df['has_s1']
+            df[s2_count] = np.floor(df[group_margin] / margin_dict['strangle_2']) * df['has_s2']
+            df[s3_count] = np.floor(df[group_margin] / margin_dict['strangle_3']) * df['has_s3']
+
+            df[atm_return] = df['atm_r'] * df[atm_count]
+            df[s1_return] = df['strangle_1_r'] * df[s1_count]
+            df[s2_return] = df['strangle_2_r'] * df[s2_count]
+            df[s3_return] = df['strangle_3_r'] * df[s3_count]
+            df[all_return] = df[atm_return] + df[s1_return] + df[s2_return] + df[s3_return]
+
+            df[atm_drawback] = df['atm_d'] * df[atm_count]
+            df[s1_drawback] = df['strangle_1_d'] * df[s1_count]
+            df[s2_drawback] = df['strangle_2_d'] * df[s2_count]
+            df[s3_drawback] = df['strangle_3_d'] * df[s3_count]
+            df[all_drawback] = df[atm_drawback] + df[s1_drawback] + df[s2_drawback] + df[s3_drawback]
+
+        df = df[output_item]
+
+        vixAnalyzer = VixAnalyzer(self.jqsdk, self.underlyingSymbol)
+        percentileList = []
+        for n in [0, 120, 250]:
+            percentile = vixAnalyzer.getVixPercentile(n=n)
+            percentileList.append(percentile)
+            # percentile.index.name = 'tradeDay'
+
+        mergeList = [df]
+        mergeList.extend(percentileList)
+        df = pd.concat(mergeList, axis=1)
+        df = df.dropna()
+
+        saveCsv(df, self.getOutputPath('backtesting_position.csv'))
+
+    def analyzeStop(self):
+        fp = self.getOutputPath('backtesting_position.csv')
+        df = pd.read_csv(fp, index_col=0, parse_dates=True)
+        df.sort_values(by='drawbacks_40%', inplace=True)
+
+        resList = []
+        allDays = len(df)
+        stopList = range(1000, 20000, 1000)
+        for stop in stopList:
+            stopDict = OrderedDict()
+            dfStoped = df[df['drawbacks_40%'] <= (-stop)]
+            dfNonStoped = df[df['drawbacks_40%'] > (-stop)]
+            stopDays = len(dfStoped)
+            stopNum = -stop * stopDays
+            nonStopNum = dfNonStoped['returns_40%'].sum()
+
+            stopDict['stopMoney'] = -stop
+            stopDict['allDays'] = allDays
+            stopDict['stopDays'] = stopDays
+            stopDict['allStopMoney'] = stopNum
+            stopDict['nonStopReturn'] = nonStopNum
+            stopDict['finalReturn'] = stopNum + nonStopNum
+
+            resList.append(stopDict)
+
+        resDf = pd.DataFrame(resList)
+        saveCsv(resDf, self.getOutputPath('analyze_stop.csv'))
 
     def removeOHLCgap(self, df=None, *args, **kwargs):
         """
@@ -2890,27 +3115,38 @@ class QvixPlotter(LoggerWrapper):
         """
         if self.dailyData is None:
             # 从网络获取最新数据
-            resp = requests.get(QVIX_URL)
-            csv_reader = csv.DictReader(resp.iter_lines())
-            csv_list = list(csv_reader)
-            latest = csv_list[-1]
-            self.info(u'波动率数据更新完成')
+            # resp = requests.get(QVIX_URL)
+            # csv_reader = csv.DictReader(resp.iter_lines())
+            # csv_list = list(csv_reader)
+            # latest = csv_list[-1]
+            # self.info(u'波动率数据更新完成')
+            #
+            # if latest['2'] == '':
+            #     latest = csv_list[-2]
+            #
+            # print(latest)
+            # print(dateToStr(datetime.fromtimestamp(float(latest['1']) / 1000)))
+            # d = dict()
+            # d['open'] = float(latest['2'])
+            # d['high'] = float(latest['3'])
+            # d['low'] = float(latest['4'])
+            # d['close'] = float(latest['5'])
+            # s = pd.Series(d)
+            # s.name = dateToStr(datetime.fromtimestamp(float(latest['1']) / 1000))
+            #
+            # filename = 'qvix_daily.csv'
+            # fp = os.path.join(getDataDir(), RESEARCH, OPTION, 'qvix', filename)
+            # df = pd.read_csv(fp, index_col=0, parse_dates=True)
+            # df.index = df.index.map(dateToStr)
+            # if df.iloc[-1].name != s.name:
+            #     df = df.append(s)
+            # df.to_csv(fp, encoding='utf-8')
+            # self.dailyData = df
 
-            d = dict()
-            d['open'] = float(latest['2'])
-            d['high'] = float(latest['3'])
-            d['low'] = float(latest['4'])
-            d['close'] = float(latest['5'])
-            s = pd.Series(d)
-            s.name = dateToStr(datetime.fromtimestamp(float(latest['1']) / 1000))
-
-            filename = 'qvix_daily.csv'
+            filename = 'vixBar.csv'
             fp = os.path.join(getDataDir(), RESEARCH, OPTION, 'qvix', filename)
             df = pd.read_csv(fp, index_col=0, parse_dates=True)
             df.index = df.index.map(dateToStr)
-            if df.iloc[-1].name != s.name:
-                df = df.append(s)
-            df.to_csv(fp, encoding='utf-8')
             self.dailyData = df
         return self.dailyData
 
@@ -3095,6 +3331,62 @@ class QvixPlotter(LoggerWrapper):
         htmlName = 'vol_diff.html'
         outputDir = self.jqsdk.getResearchPath(OPTION, 'dailytask')
         overlap.render(os.path.join(outputDir, htmlName))
+
+    def plotICIHIF(self):
+        data = OrderedDict()
+        today = self.jqsdk.today
+        data['ic'] = self.jqsdk.get_price('IC8888.CCFX', start_date='2019-01-01', end_date=dateToStr(today))
+        data['ih'] = self.jqsdk.get_price('IH8888.CCFX', start_date='2019-01-01', end_date=dateToStr(today))
+        data['if'] = self.jqsdk.get_price('IF8888.CCFX', start_date='2019-01-01', end_date=dateToStr(today))
+        data['index'] = data['ic'].index.tolist()
+
+        icihVol = 'IC-IH'
+        icifVol = 'IC-IF'
+        ifihVol = 'IF-IH'
+        data[icihVol] = data['ic'].close - data['ih'].close
+        data[icifVol] = data['ic'].close - data['if'].close
+        data[ifihVol] = data['if'].close - data['ih'].close
+
+        lineStyle = self.genStyle.copy()
+        lineStyle['line_width'] = 2
+        page = Page()
+
+        overlapICIH = Overlap(width=self.width, height=self.height)
+        for linename in ['ic', 'ih']:
+            line = Line(u'IC-IH收盘价差')
+            line.add(linename, data[linename].index.tolist(), data[linename].close.tolist(),
+                     tooltip_trigger='axis', tooltip_axispointer_type='cross', **lineStyle)
+            overlapICIH.add(line)
+        barICIH = Line()
+        barICIH.add(icihVol, data['index'], data[icihVol])
+        overlapICIH.add(barICIH)
+
+        overlapICIF = Overlap(width=self.width, height=self.height)
+        for linename in ['ic', 'if']:
+            line = Line(u'IC-IF收盘价差')
+            line.add(linename, data[linename].index.tolist(), data[linename].close.tolist(),
+                     tooltip_trigger='axis', tooltip_axispointer_type='cross', **lineStyle)
+            overlapICIF.add(line)
+        barICIF = Line()
+        barICIF.add(icifVol, data['index'], data[icifVol])
+        overlapICIF.add(barICIF)
+
+        overlapIFIH = Overlap(width=self.width, height=self.height)
+        for linename in ['if', 'ih']:
+            line = Line(u'IF-IH收盘价差')
+            line.add(linename, data[linename].index.tolist(), data[linename].close.tolist(),
+                     tooltip_trigger='axis', tooltip_axispointer_type='cross', **lineStyle)
+            overlapIFIH.add(line)
+        barIFIH = Line()
+        barIFIH.add(ifihVol, data['index'], data[ifihVol])
+        overlapIFIH.add(barIFIH)
+
+        page.add(overlapICIH)
+        page.add(overlapICIF)
+        page.add(overlapIFIH)
+        htmlName = 'ic_ih_if_volDiff.html'
+        outputDir = self.jqsdk.getResearchPath(OPTION, 'dailytask')
+        page.render(os.path.join(outputDir, htmlName))
 
     def plotMa(self, n1=5, n2=20, n3=60):
         """
@@ -3480,6 +3772,7 @@ def get_qvix_data():
         }
         df = pd.DataFrame(csv_list)
         df.rename(columns=name_dict, inplace=True)
+        df.dropna(inplace=True)
         df['datetime'] = df['datetime'].map(lambda t_stamp: dateToStr(datetime.fromtimestamp(float(t_stamp) / 1000)))
         for item in ['open', 'high', 'low', 'close']:
             df[item] = df[item].map(lambda str_num: float(str_num))

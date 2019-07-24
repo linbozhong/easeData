@@ -45,7 +45,7 @@ def load_qvix_data(start=None, end=None):
     return df
 
 
-def analyze_ohlc_relationship(data, a, b, direction):
+def analyze_ohlc_relationship(data, a, b, direction, isRelative=True):
     """
     研究OHLC的关系
     :param data: DataFrame
@@ -105,15 +105,20 @@ def analyze_ohlc_relationship(data, a, b, direction):
     # c_n = len(df_n)
     # print(u'百分比超过%s交易日：%s，占比：%.3f %%' % (n, c_n, (float(c_n) / float(h_gt_o_trade_days)) * 100))
 
+    caption = 'Ratio' if isRelative else 'Absolute'
+
     fig = plt.figure(figsize=(16, 12))
     ax1 = fig.add_subplot(2, 1, 1)
     ax2 = fig.add_subplot(2, 1, 2)
-    ax1.set_title(u'Ratio({} to {}) Distribution'.format(a, b))
-    ax2.set_title(u'Ratio({} to {}) Cumulative Distribution'.format(a, b))
+    ax1.set_title(u'{}({} to {}) Distribution'.format(caption, a, b))
+    ax2.set_title(u'{}({} to {}) Cumulative Distribution'.format(caption, a, b))
 
     plt.subplots_adjust(hspace=0.2)
 
-    data = df[relative_change_name].values
+    if isRelative:
+        data = df[relative_change_name].values
+    else:
+        data = df[abs_change_name].values
     sns.distplot(data, bins=100, color='g', ax=ax1)
     sns.kdeplot(data, color='r', cumulative=True, ax=ax2)
 
@@ -126,7 +131,7 @@ def analyze_ohlc_relationship(data, a, b, direction):
     ax2.xaxis.set_major_locator(ticker.MultipleLocator(5))
     ax2.yaxis.set_major_locator(ticker.MultipleLocator(0.1))
 
-    filename = '{}_to_{}_{}_{}_relationship.png'.format(dateToStr(start_date), dateToStr(end_date), a, b)
+    filename = '{}_to_{}_{}_{}_relationship_{}.png'.format(dateToStr(start_date), dateToStr(end_date), a, b, caption)
     fig.savefig(getTestPath(filename))
 
 
@@ -515,8 +520,26 @@ if __name__ == '__main__':
     # analyze_ohlc_relationship(vix_data, 'pre_close', 'close', 'up')
     # analyze_ohlc_relationship(vix_data, 'low', 'high', 'up')
 
-    etf_data = get_50etf_data()
-    analyze_ohlc_relationship(etf_data, 'pre_close', 'open', 'up')
+    # etf_data = get_50etf_data()
+    # analyze_ohlc_relationship(etf_data, 'pre_close', 'open', 'up')
+
+
+    vix_data = load_qvix_data()
+    analyze_ohlc_relationship(vix_data, 'pre_close', 'high', 'up')
+    analyze_ohlc_relationship(vix_data, 'pre_close', 'high', 'up', isRelative=False)
+
+    vix_data = load_qvix_data(start='2017-06-18')
+    analyze_ohlc_relationship(vix_data, 'pre_close', 'high', 'up')
+    analyze_ohlc_relationship(vix_data, 'pre_close', 'high', 'up', isRelative=False)
+
+    vix_data = load_qvix_data(start='2018-06-18')
+    analyze_ohlc_relationship(vix_data, 'pre_close', 'high', 'up')
+    analyze_ohlc_relationship(vix_data, 'pre_close', 'high', 'up', isRelative=False)
+
+    vix_data = load_qvix_data(start='2019-01-01')
+    analyze_ohlc_relationship(vix_data, 'pre_close', 'high', 'up')
+    analyze_ohlc_relationship(vix_data, 'pre_close', 'high', 'up', isRelative=False)
+
 
     # etf_data = get_50etf_data()
     # analyze_ohlc_relationship(etf_data, 'open', 'close', 'up')
