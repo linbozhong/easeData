@@ -1,5 +1,6 @@
 # coding:utf-8
 
+import math
 import requests
 import csv
 import numpy as np
@@ -7,18 +8,17 @@ import pandas as pd
 import os
 import pymongo
 import matplotlib.pyplot as plt
+import matplotlib.mlab as mlab
 import matplotlib.ticker as ticker
 import seaborn as sns
+import tushare as ts
+
 from copy import copy
 from collections import OrderedDict
-
 from datetime import datetime, timedelta, time
 from dateutil.relativedelta import relativedelta, FR
 from scipy import stats
-
-import tushare as ts
 from jqdatasdk import opt, query
-
 from pyecharts import Line, Kline, Bar
 from pyecharts import Page, Overlap
 
@@ -31,6 +31,37 @@ from text import *
 
 sns.set()
 QVIX_URL = 'http://1.optbbs.com/d/csv/d/vixk.csv'
+
+
+class MonteCarlo(LoggerWrapper):
+    def __init__(self, underlyingAnalyzer):
+        super(MonteCarlo, self).__init__()
+        self.underlyingAnalyzer = underlyingAnalyzer
+        self.price = None
+
+    def getPrice(self, start=None):
+        """获取价格序列并生成对数收益率数据"""
+        if self.price is None:
+            price = self.underlyingAnalyzer.getPrice()
+            if start:
+                start = strToDate(start)
+                price = price[start:]
+                price = copy(price)
+            price['returns'] = price.close.pct_change()
+            price['returns'] = np.log(price['returns'] + 1)
+            self.price = price
+        return self.price
+
+    def monteCarloSim(self, simNum, expiredDays):
+        price = self.getPrice()
+        lastPrice = price['close'][-1]
+        dailyVol = price['returns'].std()
+
+        randDailyReturn = np.random.normal(0, dailyVol, size=(simNum, expiredDays)) + 1
+        randDailyReturn = np.insert(randDailyReturn, 0, lastPrice, axis=1)
+        randPrice = np.multiply.accumulate(randDailyReturn, axis=1)
+        df = pd.DataFrame(randPrice)
+        return df
 
 
 class CorrelationAnalyzer(LoggerWrapper):
@@ -2172,6 +2203,7 @@ class OptionUnderlyingAnalyzer(LoggerWrapper):
         fig.savefig(self.getOutputPath(fn))
 
     def getImpliedVolatility(self):
+        """获取期权论坛隐含波动率"""
         try:
             return self.price['IV']
         except KeyError:
@@ -2180,6 +2212,7 @@ class OptionUnderlyingAnalyzer(LoggerWrapper):
             return df['IV']
 
     def getHistVolatility(self, n, isLogReturn=True):
+        """计算历史波动率"""
         name = 'HV_{}'.format(n)
         try:
             df = self.getPrice()
@@ -2193,6 +2226,7 @@ class OptionUnderlyingAnalyzer(LoggerWrapper):
             return df[name]
 
     def plotVolatilityBox(self):
+        """绘制历史波动率盒须图"""
         statsLst = []
         volLst = []
         df = self.getPrice()

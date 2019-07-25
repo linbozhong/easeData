@@ -5,7 +5,7 @@ import os
 from datetime import datetime
 from easeData.functions import getTestPath, dateToStr
 from easeData.analyze import (CorrelationAnalyzer, PositionDiffPlotter, SellBuyRatioPlotter, QvixPlotter,
-                              NeutralContractAnalyzer, OptionUnderlyingAnalyzer, VixAnalyzer)
+                              NeutralContractAnalyzer, OptionUnderlyingAnalyzer, VixAnalyzer, MonteCarlo)
 from easeData.collector import JQDataCollector
 
 corrAnalyzer = CorrelationAnalyzer()
@@ -15,6 +15,20 @@ qvixPlotter = QvixPlotter()
 
 jqsdk = JQDataCollector()
 
+underlyingAnalyzer = OptionUnderlyingAnalyzer(jqsdk, '510050.XSHG')
+
+
+class TestMonteCarlo(unittest.TestCase):
+    def setUp(self):
+        self.obj = MonteCarlo(underlyingAnalyzer)
+
+    def testGetPrice(self):
+        df = self.obj.getPrice(start='2019-07-01')
+        print(df)
+
+    def testMonteCarlo(self):
+        df = self.obj.monteCarloSim(100, 21)
+        df.to_csv(getTestPath('montecarlo.csv'))
 
 class TestVixAnalyzer(unittest.TestCase):
     def setUp(self):
