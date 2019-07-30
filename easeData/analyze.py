@@ -38,6 +38,9 @@ class MonteCarlo(LoggerWrapper):
         super(MonteCarlo, self).__init__()
         self.underlyingAnalyzer = underlyingAnalyzer
         self.price = None
+        self.simCount = None
+        self.expiredDays = None
+        self.simCache = None
 
     def getPrice(self, start=None):
         """获取价格序列并生成对数收益率数据"""
@@ -52,16 +55,47 @@ class MonteCarlo(LoggerWrapper):
             self.price = price
         return self.price
 
-    def monteCarloSim(self, simNum, expiredDays):
+    def monteCarloSim(self, simCount, expiredDays):
+        """
+        进行蒙特卡洛模拟，并保存计算结果
+        :param simCount: 模拟次数
+        :param expiredDays: 剩余到期日
+        :return:
+        """
+        if self.expiredDays == expiredDays and self.simCount >= simCount and self.simCache:
+            print('Data from cache.')
+            return self.simCache
+
         price = self.getPrice()
         lastPrice = price['close'][-1]
         dailyVol = price['returns'].std()
+        print(dailyVol * 15.87)
 
-        randDailyReturn = np.random.normal(0, dailyVol, size=(simNum, expiredDays)) + 1
+        randDailyReturn = np.random.normal(0, dailyVol, size=(simCount, expiredDays)) + 1
         randDailyReturn = np.insert(randDailyReturn, 0, lastPrice, axis=1)
         randPrice = np.multiply.accumulate(randDailyReturn, axis=1)
         df = pd.DataFrame(randPrice)
+
+        self.simCount = simCount
+        self.expiredDays = expiredDays
+        self.simCache = df
         return df
+
+    def getExpiredDays(self, expiredDate):
+        """输入最后交易日，获取剩余交易天数"""
+        d1 = datetime.now().date()
+        d2 = strToDate(expiredDate).date()
+        cal = self.underlyingAnalyzer.collector.getTradeDayCal()
+        days = cal[(cal > d1) & (cal <= d2)]
+        return len(days)
+
+    def getProbability(self, up, down, expiredDate, simCount=100000):
+        """计算合约存续期间维持上下行权价的概率"""
+        expiredDays = self.getExpiredDays(expiredDate)
+        df = self.monteCarloSim(simCount, expiredDays)
+        selDf = df[(df > up) | (df < down)]
+        selDf.dropna(how='all', inplace=True)
+        return 1 - (len(selDf) / float(simCount))
 
 
 class CorrelationAnalyzer(LoggerWrapper):

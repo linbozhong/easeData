@@ -30,6 +30,18 @@ class TestMonteCarlo(unittest.TestCase):
         df = self.obj.monteCarloSim(100, 21)
         df.to_csv(getTestPath('montecarlo.csv'))
 
+    def testGetExpiredDays(self):
+        date = '2019-08-28'
+        print(self.obj.getExpiredDays(date))
+
+    def testGetProbability(self):
+        up = 3.2
+        down = 2.8
+        date = '2019-08-28'
+        self.obj.getPrice('2018-07-28')
+        print(self.obj.getProbability(up, down, date))
+
+
 class TestVixAnalyzer(unittest.TestCase):
     def setUp(self):
         self.obj = VixAnalyzer(jqsdk, '510050.XSHG')
@@ -284,7 +296,6 @@ class TestNeutralAnalyzer(unittest.TestCase):
         self.obj.getOHLCdaily(group='straddle', level=2, method=method)
         self.obj.getOHLCdaily(group='straddle', level=3, method=method)
 
-
     def testGetLast5Days(self):
         self.obj.getLast5Days()
 
@@ -316,7 +327,6 @@ class TestNeutralAnalyzer(unittest.TestCase):
         # self.obj.dailyBackTest(group='straddle', method='match', level=3, start='open')
         # self.obj.dailyBackTest(group='straddle', method='simple', level=3, start='open')
 
-
         self.obj.dailyBackTest(group='atm', method='match', start='pre_close', isLast5=False)
         self.obj.setSlippage(1)
         self.obj.setInterval(4)
@@ -328,7 +338,6 @@ class TestNeutralAnalyzer(unittest.TestCase):
         self.obj.backTestingCompare(method='match', start='pre_close')
         self.obj.backTestingPosition()
         # self.obj.analyzeStop()
-
 
     def testRemoveGap(self):
         df = self.obj.removeOHLCgap()
